@@ -28,8 +28,8 @@ const authMiddleware = (req, res, next) => {
 // -----------------------------
 router.post("/register", async (req, res) => {
   try {
-    const { username, email, mobileNumber, password } = req.body;
-    if (!username || !email || !mobileNumber || !password)
+    const { username, email, contactNumber, password } = req.body;
+    if (!username || !email || !contactNumber || !password)
       return res.status(400).json({ error: "All fields are required" });
 
     const existingUser = await User.findOne({ email });
@@ -43,7 +43,7 @@ router.post("/register", async (req, res) => {
     const newUser = new User({
       username,
       email,
-      mobileNumber,
+      contactNumber,
       password: hashedPassword,
       verificationCode,
       codeExpires,
@@ -126,7 +126,7 @@ router.post("/login", async (req, res) => {
         id: user._id,
         username: user.username,
         email: user.email,
-        mobileNumber: user.mobileNumber,
+        contactNumber: user.contactNumber,
       },
     });
   } catch (error) {
