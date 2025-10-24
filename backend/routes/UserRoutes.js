@@ -23,22 +23,24 @@ const authMiddleware = (req, res, next) => {
   }
 };
 
-// -----------------------------
-// REGISTER
-// -----------------------------
 router.post("/register", async (req, res) => {
   try {
+    console.log("💡 Incoming request body:", req.body); // <-- log req.body
+
     const { username, email, contactNumber, password } = req.body;
-    if (!username || !email || !contactNumber || !password)
+
+    if (!username || !email || !contactNumber || !password) {
+      console.warn("⚠️ Missing fields:", { username, email, contactNumber, password });
       return res.status(400).json({ error: "All fields are required" });
+    }
 
     const existingUser = await User.findOne({ email });
     if (existingUser)
       return res.status(400).json({ error: "Email already registered" });
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
-    const codeExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const codeExpires = new Date(Date.now() + 10 * 60 * 1000);
 
     const newUser = new User({
       username,
@@ -52,7 +54,6 @@ router.post("/register", async (req, res) => {
 
     await newUser.save();
 
-    // ✅ Send verification code
     try {
       await sendVerificationCode(email, verificationCode);
     } catch (emailErr) {
@@ -60,6 +61,7 @@ router.post("/register", async (req, res) => {
       return res.status(500).json({ error: "Failed to send verification code" });
     }
 
+    console.log("✅ User created:", newUser._id);
     res.status(201).json({
       message: "Verification code sent to your email",
       userId: newUser._id,
