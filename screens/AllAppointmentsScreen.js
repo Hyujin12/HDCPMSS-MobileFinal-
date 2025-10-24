@@ -40,7 +40,7 @@ export default function AllAppointmentsScreen() {
 
   const navigation = useNavigation();
 
-  const BASE_URL = "https://hdcpmss-mobile-1.onrender.com";
+  const BASE_URL = "https://hdcpmss-mobilefinal.onrender.com";
   const API_URL = `${BASE_URL}/api/booked-services`;
   const USER_URL = `${BASE_URL}/api/users/profile`;
 

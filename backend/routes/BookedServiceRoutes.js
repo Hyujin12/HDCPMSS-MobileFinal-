@@ -8,7 +8,7 @@ router.post("/", async (req, res) => {
     const {
       userId,
       serviceName,
-      fullname,
+      username,
       email,
       phone,
       description,
@@ -23,7 +23,7 @@ router.post("/", async (req, res) => {
     const booking = new BookedService({
       userId,
       serviceName,
-      fullname,
+      username,
       email,
       phone,
       description,

@@ -24,7 +24,7 @@ const wp = (percentage) => (screenWidth * percentage) / 100;
 const hp = (percentage) => (screenHeight * percentage) / 100;
 const isSmallDevice = screenWidth < 375;
 
-const BASE_URL = "https://hdcpmss-mobile-1.onrender.com";
+const BASE_URL = "https://hdcpmss-mobilefinal.onrender.com";
 
 const services = [
   { 
@@ -135,14 +135,15 @@ const ServicesScreen = () => {
 
       const bookingData = {
         userId: user.id,
-        serviceName: selectedService.title,
-        fullname: username,
-        email,
+         serviceName: selectedService.title,
+        username, // ❌ This should be username
+         email,
         phone: contactNumber,
         description,
-        date: date.toISOString().split("T")[0],
+         date: date.toISOString().split("T")[0],
         time: date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      };
+        };
+
 
       await axios.post(`${BASE_URL}/api/booked-services`, bookingData, {
         headers: { Authorization: `Bearer ${token}` },

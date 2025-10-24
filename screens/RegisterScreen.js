@@ -21,7 +21,7 @@ import {
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 // Set your backend URL here
-const API_BASE_URL = 'https://hdcpmss-mobile-1.onrender.com';
+const API_BASE_URL = 'https://hdcpmss-mobilefinal.onrender.com';
 
 const CustomAlert = ({ visible, type, title, message, onConfirm, onCancel, showCancel = false }) => {
   const [scaleAnim] = useState(new Animated.Value(0));

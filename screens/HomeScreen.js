@@ -41,7 +41,7 @@ Notifications.setNotificationHandler({
 // -------------------------
 // Backend BASE_URL
 // -------------------------
-const BASE_URL = 'https://hdcpmss-mobile-1.onrender.com';
+const BASE_URL = 'https://hdcpmss-mobilefinal.onrender.com';
 
 const HomeScreen = ({ navigation }) => {
   const [appointments, setAppointments] = useState([]);
