@@ -16,7 +16,7 @@ router.post("/", async (req, res) => {
       time,
     } = req.body;
 
-    if (!serviceName || !fullname || !email || !phone || !date || !time) {
+    if (!serviceName || !username || !email || !phone || !date || !time) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
