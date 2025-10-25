@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useNavigation } from "@react-navigation/native";
@@ -228,12 +229,27 @@ export default function AllAppointmentsScreen() {
       <StatusBar barStyle="light-content" backgroundColor="#048E04" />
       <SafeAreaView style={styles.safeArea}>
         {/* Header with Gradient Effect */}
+        
+        {/* Header with Back Button */}
         <View style={styles.headerContainer}>
-          <View style={styles.headerContent}>
-            <Text style={styles.headerTitle}>Appointments</Text>
-            <Text style={styles.headerCount}>{bookings.length} Total</Text>
-          </View>
-        </View>
+        <View style={styles.headerContent}>
+        <View style={styles.headerRow}>
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => navigation.goBack()}
+        activeOpacity={0.7}
+      >
+        <Ionicons name="arrow-back" size={24} color="#fff" />
+      </TouchableOpacity>
+
+      <View style={styles.headerTextWrapper}>
+        <Text style={styles.headerTitle}>Appointments</Text>
+        <Text style={styles.headerCount}>{bookings.length} Total</Text>
+      </View>
+    </View>
+  </View>
+</View>
+
 
         {/* Filter Pills */}
         {bookings.length > 0 && (
@@ -333,7 +349,7 @@ export default function AllAppointmentsScreen() {
 
                     {/* Patient & Phone */}
                     <View style={styles.detailsBox}>
-                      <Text style={styles.detailText}>👤 {item.fullname}</Text>
+                      <Text style={styles.detailText}>👤 {item.username}</Text>
                       <Text style={styles.detailText}>📞 {item.phone}</Text>
                     </View>
 
@@ -401,7 +417,7 @@ export default function AllAppointmentsScreen() {
                     <Text style={styles.fieldLabel}>Patient Name</Text>
                     <TextInput
                       style={[styles.fieldInput, styles.disabledInput]}
-                      value={selectedBooking?.fullname}
+                      value={selectedBooking?.username}
                       editable={false}
                     />
                   </View>
@@ -410,27 +426,30 @@ export default function AllAppointmentsScreen() {
                     <Text style={styles.fieldLabel}>Email</Text>
                     <TextInput
                       style={[styles.fieldInput, styles.disabledInput]}
-                      value={selectedBooking?.email}
+                      value={selectedBooking?.email}z
                       editable={false}
                     />
                   </View>
 
                   <View style={styles.fieldGroup}>
-                    <Text style={styles.fieldLabel}>Select Date</Text>
-                    <Calendar
-                      onDayPress={(day) => setSelectedDate(day.dateString)}
-                      markedDates={{
-                        [selectedDate]: {
-                          selected: true,
-                          selectedColor: "#048E04",
-                        },
-                      }}
-                      theme={{
-                        selectedDayBackgroundColor: "#048E04",
-                        todayTextColor: "#048E04",
-                        arrowColor: "#048E04",
-                      }}
-                    />
+                       <Text style={styles.fieldLabel}>Select Date</Text>
+                        <Calendar
+                        onDayPress={(day) => setSelectedDate(day.dateString)}
+                        markedDates={{
+                          [selectedDate]: {
+                            selected: true,
+                            selectedColor: "#048E04",
+                          },
+                        }}
+                        minDate={new Date().toISOString().split("T")[0]} // ✅ disables past dates
+                        theme={{
+                          selectedDayBackgroundColor: "#048E04",
+                          todayTextColor: "#048E04",
+                          arrowColor: "#048E04",
+                        }}
+                      />
+
+
                   </View>
 
                   <View style={styles.fieldGroup}>
@@ -447,16 +466,35 @@ export default function AllAppointmentsScreen() {
                   </View>
 
                   {showTimePicker && (
-                    <DateTimePicker
-                      value={selectedTime}
-                      mode="time"
-                      display="default"
-                      onChange={(event, time) => {
-                        setShowTimePicker(false);
-                        if (time) setSelectedTime(time);
-                      }}
-                    />
-                  )}
+                        <DateTimePicker
+                          value={selectedTime}
+                          mode="time"
+                          display="default"
+                          onChange={(event, time) => {
+                            setShowTimePicker(false);
+                            if (!time) return;
+
+                            const selectedDateObj = new Date(selectedDate);
+                            const now = new Date();
+                            const selectedDateTime = new Date(
+                              selectedDateObj.getFullYear(),
+                              selectedDateObj.getMonth(),
+                              selectedDateObj.getDate(),
+                              time.getHours(),
+                              time.getMinutes(),
+                              0
+                            );
+
+                            if (selectedDateTime < now) {
+                              Alert.alert("Invalid Time", "Please select a future time.");
+                              return;
+                            }
+
+                            setSelectedTime(time);
+                          }}
+                        />
+                      )}
+
 
                   <View style={styles.fieldGroup}>
                     <Text style={styles.fieldLabel}>Contact Number</Text>
