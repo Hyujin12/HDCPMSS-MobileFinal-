@@ -3,7 +3,8 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const router = express.Router();
 const User = require("../models/User");
-const sendVerificationCode = require("../mailer"); // ✅ sends verification code
+const sendVerificationCode = require("../mailer"); // ✅ now sends code, not link
+
 const JWT_SECRET = process.env.JWT_SECRET;
 
 // -----------------------------
@@ -22,12 +23,10 @@ const authMiddleware = (req, res, next) => {
   }
 };
 
-// -----------------------------
-// REGISTER
-// -----------------------------
 router.post("/register", async (req, res) => {
   try {
-    console.log("💡 Incoming request body:", req.body);
+    console.log("💡 Incoming request body:", req.body); // <-- log req.body
+
     const { username, email, contactNumber, password } = req.body;
 
     if (!username || !email || !contactNumber || !password) {
@@ -74,7 +73,7 @@ router.post("/register", async (req, res) => {
 });
 
 // -----------------------------
-// VERIFY EMAIL (OTP)
+// VERIFY EMAIL (OTP code)
 // -----------------------------
 router.post("/verify", async (req, res) => {
   const { userId, code } = req.body;
@@ -99,7 +98,7 @@ router.post("/verify", async (req, res) => {
 });
 
 // -----------------------------
-// LOGIN
+// LOGIN (JWT)
 // -----------------------------
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
@@ -139,114 +138,7 @@ router.post("/login", async (req, res) => {
 });
 
 // -----------------------------
-// RESEND VERIFICATION CODE
-// -----------------------------
-router.post("/resend-code", async (req, res) => {
-  const { email } = req.body;
-
-  try {
-    const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ error: "User not found" });
-    if (user.isVerified) return res.status(400).json({ error: "User already verified" });
-
-    const newCode = Math.floor(100000 + Math.random() * 900000).toString();
-    user.verificationCode = newCode;
-    user.codeExpires = new Date(Date.now() + 10 * 60 * 1000);
-    await user.save();
-
-    await sendVerificationCode(email, newCode);
-    res.json({ message: "New verification code sent" });
-  } catch (err) {
-    console.error("Resend code error:", err);
-    res.status(500).json({ error: "Failed to resend verification code" });
-  }
-});
-
-// -----------------------------
-// FORGOT PASSWORD
-// -----------------------------
-router.post("/forgot-password", async (req, res) => {
-  const { email } = req.body;
-
-  try {
-    const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ error: "User not found" });
-
-    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
-    user.resetCode = resetCode;
-    user.resetExpires = new Date(Date.now() + 10 * 60 * 1000);
-    await user.save();
-
-    await sendVerificationCode(email, resetCode);
-    res.json({ message: "Password reset code sent to your email" });
-  } catch (err) {
-    console.error("Forgot password error:", err);
-    res.status(500).json({ error: "Failed to send password reset code" });
-  }
-});
-
-// -----------------------------
-// RESET PASSWORD
-// -----------------------------
-router.post("/reset-password", async (req, res) => {
-  const { email, code, newPassword } = req.body;
-
-  try {
-    const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ error: "User not found" });
-    if (user.resetCode !== code) return res.status(400).json({ error: "Invalid code" });
-    if (user.resetExpires < Date.now()) return res.status(400).json({ error: "Code expired" });
-
-    user.password = await bcrypt.hash(newPassword, 10);
-    user.resetCode = null;
-    user.resetExpires = null;
-    await user.save();
-
-    res.json({ message: "Password reset successful" });
-  } catch (err) {
-    console.error("Reset password error:", err);
-    res.status(500).json({ error: "Failed to reset password" });
-  }
-});
-
-// -----------------------------
-// UPDATE PROFILE
-// -----------------------------
-router.put("/update-profile", authMiddleware, async (req, res) => {
-  const { username, contactNumber } = req.body;
-
-  try {
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ error: "User not found" });
-
-    if (username) user.username = username;
-    if (contactNumber) user.contactNumber = contactNumber;
-
-    await user.save();
-    res.json({ message: "Profile updated successfully", user });
-  } catch (err) {
-    console.error("Update profile error:", err);
-    res.status(500).json({ error: "Failed to update profile" });
-  }
-});
-
-// -----------------------------
-// DELETE ACCOUNT
-// -----------------------------
-router.delete("/delete-account", authMiddleware, async (req, res) => {
-  try {
-    const user = await User.findByIdAndDelete(req.user.id);
-    if (!user) return res.status(404).json({ error: "User not found" });
-
-    res.json({ message: "Account deleted successfully" });
-  } catch (err) {
-    console.error("Delete account error:", err);
-    res.status(500).json({ error: "Failed to delete account" });
-  }
-});
-
-// -----------------------------
-// PROTECTED PROFILE
+// PROTECTED PROFILE ROUTE
 // -----------------------------
 router.get("/profile", authMiddleware, async (req, res) => {
   try {

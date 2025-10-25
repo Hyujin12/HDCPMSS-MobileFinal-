@@ -97,7 +97,7 @@ const ProfileScreen = () => {
     try {
       const token = await AsyncStorage.getItem('token');
       await axios.put(
-        `${BASE_URL}/api/users/profile`,
+        `${BASE_URL}/api/users/update-profile`,
         {
           username: editedUser.username.trim(),
           contactNumber: editedUser.contactNumber.trim(),
