@@ -11,6 +11,7 @@ import VerifyScreen from '../screens/VerifyScreen';
 import AllAppointmentsScreen from '../screens/AllAppointmentsScreen';
 import AppointmentDetailsScreen from '../screens/AppointmentDetailsScreen';
 import BookAppointmentScreen from '../screens/BookAppointmentScreen';
+import ForgotPassword from '../screens/ForgotPassword';
 import HistoryScreen from '../screens/HistoryScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import ServicesScreen from '../screens/ServicesScreen';
@@ -30,6 +31,7 @@ export default function Navigation() {
         <Stack.Screen name="HomeScreen" component={HomeScreen} />
         <Stack.Screen name="About" component={AboutScreen} />
         <Stack.Screen name="Verify" component={VerifyScreen} />
+        <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
 
         {/* Needed screens for HomeScreen */}
         <Stack.Screen name="Profile" component={ProfileScreen} />

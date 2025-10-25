@@ -156,53 +156,82 @@ const RegisterScreen = () => {
   };
 
   const handleRegister = async () => {
-    if (!validateForm()) {
-      showAlert({ type: 'error', title: 'Validation Error', message: 'Please fix the errors in the form before proceeding.' });
+  if (!validateForm()) {
+    showAlert({
+      type: 'error',
+      title: 'Validation Error',
+      message: 'Please fix the errors in the form before proceeding.',
+    });
+    return;
+  }
+
+  setIsLoading(true);
+  const { username, email, contactNumber, password } = formData;
+
+  try {
+    // 🔹 Step 1: Check if account already exists
+    const checkResponse = await axios.post(
+      `${API_BASE_URL}/api/users/check`,
+      { username: username.trim(), email: email.trim().toLowerCase() },
+      { headers: { 'Content-Type': 'application/json' } }
+    );
+
+    if (checkResponse.data.exists) {
+      showAlert({
+        type: 'warning',
+        title: 'Account Already Registered',
+        message: 'An account with this email or username already exists. Please sign in instead.',
+        onConfirm: hideAlert,
+      });
+      setIsLoading(false);
       return;
     }
 
-    setIsLoading(true);
-    const { username, email, contactNumber, password } = formData;
+    // 🔹 Step 2: Proceed with registration
+    const response = await axios.post(
+      `${API_BASE_URL}/api/users/register`,
+      { username: username.trim(), email: email.trim().toLowerCase(), contactNumber: contactNumber.trim(), password },
+      { timeout: 10000, headers: { 'Content-Type': 'application/json' } }
+    );
 
-    try {
-      const response = await axios.post(
-        `${API_BASE_URL}/api/users/register`,
-        { username: username.trim(), email: email.trim().toLowerCase(), contactNumber: contactNumber.trim(), password },
-        { timeout: 10000, headers: { 'Content-Type': 'application/json' } }
-      );
-
-      if (response.data.userId) {
-        showAlert({
-          type: 'success',
-          title: 'Registration Successful!',
-          message: 'A verification email has been sent to your email address.',
-          onConfirm: () => {
-            hideAlert();
-            navigation.navigate('Verify', { userId: response.data.userId, email: email.trim().toLowerCase() });
-          },
-        });
-      } else throw new Error('Invalid response from server');
-    } catch (error) {
-      let errorMessage = 'Registration failed. Please try again.';
-      let errorTitle = 'Registration Failed';
-
-      if (error.response?.data?.message) errorMessage = error.response.data.message;
-      else if (error.response?.status === 409) {
-        errorMessage = 'An account with this username or email already exists.';
-        errorTitle = 'Account Already Exists';
-      } else if (error.code === 'ECONNABORTED') {
-        errorMessage = 'The request took too long. Check your internet connection.';
-        errorTitle = 'Connection Timeout';
-      } else if (!error.response) {
-        errorMessage = 'Unable to connect to the server. Please check your internet connection.';
-        errorTitle = 'Network Error';
-      }
-
-      showAlert({ type: 'error', title: errorTitle, message: errorMessage });
-    } finally {
-      setIsLoading(false);
+    if (response.data.userId) {
+      showAlert({
+        type: 'success',
+        title: 'Registration Successful!',
+        message: 'A verification email has been sent to your email address.',
+        onConfirm: () => {
+          hideAlert();
+          navigation.navigate('Verify', {
+            userId: response.data.userId,
+            email: email.trim().toLowerCase(),
+          });
+        },
+      });
+    } else {
+      throw new Error('Invalid response from server');
     }
-  };
+  } catch (error) {
+    let errorMessage = 'Registration failed. Please try again.';
+    let errorTitle = 'Registration Failed';
+
+    if (error.response?.data?.message) errorMessage = error.response.data.message;
+    else if (error.response?.status === 409) {
+      errorMessage = 'An account with this username or email already exists.';
+      errorTitle = 'Account Already Exists';
+    } else if (error.code === 'ECONNABORTED') {
+      errorMessage = 'The request took too long. Check your internet connection.';
+      errorTitle = 'Connection Timeout';
+    } else if (!error.response) {
+      errorMessage = 'Unable to connect to the server. Please check your internet connection.';
+      errorTitle = 'Network Error';
+    }
+
+    showAlert({ type: 'error', title: errorTitle, message: errorMessage });
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   const handleLogin = () => navigation.navigate('Login');
 

@@ -237,10 +237,14 @@ const LoginScreen = () => {
                 </TouchableOpacity>
               }
             />
+                  <TouchableOpacity 
+                   onPress={(handleForgotPassword) => navigation.navigate('ForgotPassword')}
+                   activeOpacity={0.8}
+                 >
+                   <Text style={styles.forgotPasswordText}>ForgotPassword</Text>
+                 </TouchableOpacity>
 
-            <TouchableOpacity onPress={handleForgotPassword} disabled={isLoading}>
-              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-            </TouchableOpacity>
+           
 
             <ActionButton
               title={isLoading ? 'Signing In...' : 'Sign In'}

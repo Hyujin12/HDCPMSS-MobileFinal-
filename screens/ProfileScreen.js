@@ -171,7 +171,7 @@ const ProfileScreen = () => {
           style: 'destructive',
           onPress: async () => {
             await AsyncStorage.multiRemove(['token', 'userId', 'userEmail']);
-            navigation.replace('LoginScreen');
+            navigation.replace('Login');
           },
         },
       ]

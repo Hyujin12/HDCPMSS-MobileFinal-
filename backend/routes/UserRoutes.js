@@ -96,6 +96,24 @@ router.post("/verify", async (req, res) => {
     res.status(500).json({ message: "Verification failed" });
   }
 });
+// Check if user exists (email or username)
+router.post("/check", async (req, res) => {
+  try {
+    const { email, username } = req.body;
+    const existingUser = await User.findOne({
+      $or: [{ email: email.toLowerCase() }, { username }],
+    });
+
+    if (existingUser) {
+      return res.status(200).json({ exists: true });
+    } else {
+      return res.status(200).json({ exists: false });
+    }
+  } catch (error) {
+    console.error("Error checking user:", error);
+    res.status(500).json({ message: "Server error checking user" });
+  }
+});
 
 // -----------------------------
 // LOGIN (JWT)
@@ -235,6 +253,20 @@ router.put("/update-profile", authMiddleware, async (req, res) => {
   } catch (err) {
     console.error("Update profile error:", err);
     res.status(500).json({ error: "Failed to update profile" });
+  }
+});
+// -----------------------------
+// DELETE ACCOUNT
+// -----------------------------
+router.delete("/delete-account", authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findByIdAndDelete(req.user.id);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    res.json({ message: "Account deleted successfully" });
+  } catch (err) {
+    console.error("Delete account error:", err);
+    res.status(500).json({ error: "Failed to delete account" });
   }
 });
 
