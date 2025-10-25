@@ -5,7 +5,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 async function sendVerificationCode(email, code) {
   try {
     const response = await resend.emails.send({
-      from: "Halili Dental <onboarding@resend.dev>",
+      from: "Halili Dental <no-reply@halilidentalclinic.shop>",
       to: email,
       subject: "Your Halili Dental Verification Code",
       html: `
