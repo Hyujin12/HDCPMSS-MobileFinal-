@@ -182,6 +182,40 @@ router.post("/reset-password", async (req, res) => {
     res.status(500).json({ error: "Failed to reset password" });
   }
 });
+// -----------------------------
+// CHANGE PASSWORD (Authenticated)
+// -----------------------------
+router.put("/change-password", authMiddleware, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // ✅ Check current password
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) return res.status(400).json({ message: "Current password is incorrect" });
+
+    // ✅ Ensure new password is different
+    const isSamePassword = await bcrypt.compare(newPassword, user.password);
+    if (isSamePassword)
+      return res.status(400).json({ message: "New password must be different from current" });
+
+    // ✅ Hash and save new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+    await user.save();
+
+    res.status(200).json({ message: "Password changed successfully" });
+  } catch (error) {
+    console.error("Error changing password:", error);
+    res.status(500).json({ message: "Server error while changing password" });
+  }
+});
 
 // -----------------------------
 // UPDATE PROFILE
