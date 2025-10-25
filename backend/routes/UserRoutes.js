@@ -136,6 +136,26 @@ router.post("/login", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+// -----------------------------
+// UPDATE PROFILE
+// -----------------------------
+router.put("/update-profile", authMiddleware, async (req, res) => {
+  const { username, contactNumber } = req.body;
+
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    if (username) user.username = username;
+    if (contactNumber) user.contactNumber = contactNumber;
+
+    await user.save();
+    res.json({ message: "Profile updated successfully", user });
+  } catch (err) {
+    console.error("Update profile error:", err);
+    res.status(500).json({ error: "Failed to update profile" });
+  }
+});
 
 // -----------------------------
 // PROTECTED PROFILE ROUTE

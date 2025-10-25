@@ -63,7 +63,7 @@ const ProfileScreen = () => {
         return;
       }
 
-      const response = await axios.get(`${BASE_URL}/api/users/update-profile`, {
+      const response = await axios.get(`${BASE_URL}/api/users/profile`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
