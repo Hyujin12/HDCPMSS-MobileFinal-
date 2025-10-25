@@ -137,6 +137,53 @@ router.post("/login", async (req, res) => {
   }
 });
 // -----------------------------
+// FORGOT PASSWORD
+// -----------------------------
+router.post("/forgot-password", async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+    user.resetCode = resetCode;
+    user.resetExpires = new Date(Date.now() + 10 * 60 * 1000);
+    await user.save();
+
+    await sendVerificationCode(email, resetCode);
+    res.json({ message: "Password reset code sent to your email" });
+  } catch (err) {
+    console.error("Forgot password error:", err);
+    res.status(500).json({ error: "Failed to send password reset code" });
+  }
+});
+
+// -----------------------------
+// RESET PASSWORD
+// -----------------------------
+router.post("/reset-password", async (req, res) => {
+  const { email, code, newPassword } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ error: "User not found" });
+    if (user.resetCode !== code) return res.status(400).json({ error: "Invalid code" });
+    if (user.resetExpires < Date.now()) return res.status(400).json({ error: "Code expired" });
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.resetCode = null;
+    user.resetExpires = null;
+    await user.save();
+
+    res.json({ message: "Password reset successful" });
+  } catch (err) {
+    console.error("Reset password error:", err);
+    res.status(500).json({ error: "Failed to reset password" });
+  }
+});
+
+// -----------------------------
 // UPDATE PROFILE
 // -----------------------------
 router.put("/update-profile", authMiddleware, async (req, res) => {
