@@ -14,6 +14,7 @@ import BookAppointmentScreen from '../screens/BookAppointmentScreen';
 import ForgotPassword from '../screens/ForgotPassword';
 import HistoryScreen from '../screens/HistoryScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import ResetPassword from '../screens/ResetPassword';
 import ServicesScreen from '../screens/ServicesScreen';
 
 const Stack = createStackNavigator();
@@ -32,6 +33,7 @@ export default function Navigation() {
         <Stack.Screen name="About" component={AboutScreen} />
         <Stack.Screen name="Verify" component={VerifyScreen} />
         <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
+        <Stack.Screen name="ResetPassword" component={ResetPassword} />
 
         {/* Needed screens for HomeScreen */}
         <Stack.Screen name="Profile" component={ProfileScreen} />
