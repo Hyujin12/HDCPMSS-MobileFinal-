@@ -30,21 +30,22 @@ const FeedbackScreen = () => {
   const fetchCompletedAppointments = async () => {
   try {
     setLoading(true);
-    const user = await AsyncStorage.getItem("user");
-    if (!user) {
-      Alert.alert("Error", "User not found");
+    const userId = await AsyncStorage.getItem("userId");
+    if (!userId) {
+      Alert.alert("Error", "User not found. Please log in again.");
       return;
     }
 
-    const parsedUser = JSON.parse(user);
-    if (!parsedUser._id) {
-      Alert.alert("Error", "Invalid user ID");
-      return;
+    const response = await axios.get(`${BASE_URL}/feedback/${userId}`);
+    let data = response.data;
+
+    // Ensure we always have an array
+    if (!Array.isArray(data)) {
+      data = data ? [data] : [];
     }
 
-    const response = await axios.get(`${BASE_URL}/feedback/${parsedUser._id}`);
-    console.log("Completed Appointments:", response.data);
-    setCompletedAppointments(response.data || []);
+    console.log("Completed Appointments:", data);
+    setCompletedAppointments(data);
   } catch (error) {
     Alert.alert("Error", "Unable to fetch completed appointments.");
     console.log(error);
@@ -52,6 +53,7 @@ const FeedbackScreen = () => {
     setLoading(false);
   }
 };
+
 
 const handleSubmitFeedback = async () => {
   if (!selectedBooking || !selectedBooking._id) {

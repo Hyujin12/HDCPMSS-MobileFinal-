@@ -10,7 +10,7 @@ router.get("/:userId", async (req, res) => {
     // Include "Completed" or "Accepted" as eligible for feedback
     const completed = await Booking.find({
       userId,
-      status: { $in: ["Completed", "Accepted"] },
+      status: { $in: ["completed", "accepted"] },
     });
     res.json(completed);
   } catch (err) {
