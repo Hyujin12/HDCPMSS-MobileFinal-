@@ -11,6 +11,7 @@ import VerifyScreen from '../screens/VerifyScreen';
 import AllAppointmentsScreen from '../screens/AllAppointmentsScreen';
 import AppointmentDetailsScreen from '../screens/AppointmentDetailsScreen';
 import BookAppointmentScreen from '../screens/BookAppointmentScreen';
+import FeedbackScreen from '../screens/Feedback';
 import ForgotPassword from '../screens/ForgotPassword';
 import HistoryScreen from '../screens/HistoryScreen';
 import ProfileScreen from '../screens/ProfileScreen';
@@ -42,6 +43,7 @@ export default function Navigation() {
         <Stack.Screen name="Services" component={ServicesScreen} />
         <Stack.Screen name="History" component={HistoryScreen} />
         <Stack.Screen name="AppointmentDetails" component={AppointmentDetailsScreen} />
+        <Stack.Screen name="FeedbackScreen" component={FeedbackScreen} />
         
       </Stack.Navigator>
     </NavigationContainer>

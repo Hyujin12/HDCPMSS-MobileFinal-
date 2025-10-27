@@ -4,7 +4,7 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const userRoutes = require("./routes/UserRoutes");
 const bookedServiceRoutes = require("./routes/BookedServiceRoutes");
-
+import feedbackRoutes from "./routes/feedback.js";
 const app = express();
 
 // Middleware
@@ -16,6 +16,7 @@ app.use(express.json());
 // Routes
 app.use("/api/users", userRoutes);
 app.use("/api/booked-services", bookedServiceRoutes);
+app.use("/api/feedback", feedbackRoutes);
 
 // Root route for testing
 app.get("/", (req, res) => {

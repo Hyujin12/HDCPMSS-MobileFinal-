@@ -78,7 +78,7 @@ const services = [
   },
 ];
 
-const ServicesScreen = () => {
+const ServicesScreen = ({ navigation }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedService, setSelectedService] = useState(null);
   const [username, setUsername] = useState("");
@@ -135,15 +135,14 @@ const ServicesScreen = () => {
 
       const bookingData = {
         userId: user.id,
-         serviceName: selectedService.title,
-        username, // ❌ This should be username
-         email,
+        serviceName: selectedService.title,
+        username,
+        email,
         phone: contactNumber,
         description,
-         date: date.toISOString().split("T")[0],
+        date: date.toISOString().split("T")[0],
         time: date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        };
-
+      };
 
       await axios.post(`${BASE_URL}/api/booked-services`, bookingData, {
         headers: { Authorization: `Bearer ${token}` },
@@ -154,6 +153,10 @@ const ServicesScreen = () => {
       setContactNumber(phoneNumber);
       setDescription("");
       setDate(new Date());
+
+      if (navigation) {
+        navigation.navigate('Home', { refresh: Date.now() });
+      }
     } catch (err) {
       console.error("Booking Error:", err.response?.data || err.message);
       Alert.alert("Error", "Failed to book service.");
@@ -164,7 +167,6 @@ const ServicesScreen = () => {
     const currentDate = selectedDate || date;
     setShowDatePicker(Platform.OS === "ios");
     
-    // Only set date if it's today or in the future
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
@@ -179,13 +181,11 @@ const ServicesScreen = () => {
     const currentTime = selectedTime || date;
     setShowTimePicker(Platform.OS === "ios");
     
-    // Check if selected date is today
     const selectedDate = new Date(date);
     selectedDate.setHours(0, 0, 0, 0);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    // If booking for today, check if time is in the future
     if (selectedDate.getTime() === today.getTime()) {
       const now = new Date();
       if (currentTime < now) {
@@ -225,15 +225,22 @@ const ServicesScreen = () => {
     <>
       <StatusBar barStyle="light-content" backgroundColor="#048E04" />
       <SafeAreaView style={styles.safeArea}>
-        {/* Header */}
+        {/* Header with Back Button */}
         <View style={styles.header}>
-          <View>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.backIcon}>←</Text>
+          </TouchableOpacity>
+          <View style={styles.headerTextContainer}>
             <Text style={styles.headerTitle}>Our Services</Text>
             <Text style={styles.headerSubtitle}>Choose the care you need</Text>
           </View>
+          <View style={styles.headerSpacer} />
         </View>
 
-        {/* Services Grid */}
         <FlatList
           data={services}
           keyExtractor={(item, index) => index.toString()}
@@ -244,11 +251,9 @@ const ServicesScreen = () => {
           showsVerticalScrollIndicator={false}
         />
 
-        {/* Booking Modal */}
         <Modal visible={modalVisible} animationType="slide" transparent>
           <View style={styles.modalBackdrop}>
             <View style={styles.modalContainer}>
-              {/* Modal Header */}
               <View style={styles.modalHeader}>
                 <View>
                   <Text style={styles.modalTitle}>Book Appointment</Text>
@@ -267,7 +272,6 @@ const ServicesScreen = () => {
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.modalScroll}
               >
-                {/* Form Fields */}
                 <View style={styles.formSection}>
                   <Text style={styles.sectionTitle}>Patient Information</Text>
                   
@@ -381,7 +385,6 @@ const ServicesScreen = () => {
                   </View>
                 </View>
 
-                {/* Action Buttons */}
                 <View style={styles.buttonContainer}>
                   <TouchableOpacity
                     style={styles.submitButton}
@@ -420,6 +423,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: wp(5),
     paddingTop: hp(2),
     paddingBottom: hp(3),
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  backButton: {
+    width: wp(10),
+    height: wp(10),
+    borderRadius: wp(5),
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  backIcon: {
+    fontSize: wp(6),
+    color: "#fff",
+    fontWeight: "600",
+  },
+  headerTextContainer: {
+    flex: 1,
+    marginLeft: wp(3),
+  },
+  headerSpacer: {
+    width: wp(10),
   },
   headerTitle: {
     fontSize: isSmallDevice ? wp(6.5) : wp(7),

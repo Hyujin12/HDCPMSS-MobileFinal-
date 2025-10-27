@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
 import * as Notifications from 'expo-notifications';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -67,7 +68,27 @@ const HomeScreen = ({ navigation }) => {
       }).start();
     }
   }, [loading]);
+useEffect(() => {
+  checkTokenAndFetch();
+}, []);
 
+// Add this NEW useFocusEffect hook right after the above useEffect
+useFocusEffect(
+  useCallback(() => {
+    const refreshData = async () => {
+      try {
+        const token = await AsyncStorage.getItem('token');
+        if (token) {
+          await fetchAppointments(token);
+        }
+      } catch (err) {
+        console.error('❌ Error refreshing data:', err);
+      }
+    };
+
+    refreshData();
+  }, [])
+);
   // -------------------------
   // Check token & fetch data
   // -------------------------
@@ -518,7 +539,7 @@ const fetchAppointments = async (token) => {
               
               <TouchableOpacity 
                 style={styles.actionCard} 
-                onPress={() => navigation.navigate('Services')}
+                onPress={() => navigation.navigate('FeedbackScreen')}
                 activeOpacity={0.7}
               >
                 <View style={[styles.actionIconContainer, { backgroundColor: '#FEF3C7' }]}>
