@@ -1,12 +1,17 @@
+// routes/feedback.js
 const express = require("express");
-const Booking = require("../models/BookedService"); // adjust path if needed
+const Booking = require("../models/BookedService");
 const router = express.Router();
 
-// GET only completed appointments for a user
+// GET all appointments that can receive feedback
 router.get("/:userId", async (req, res) => {
   const { userId } = req.params;
   try {
-    const completed = await Booking.find({ userId, status: "Completed" });
+    // Include "Completed" or "Accepted" as eligible for feedback
+    const completed = await Booking.find({
+      userId,
+      status: { $in: ["Completed", "Accepted"] },
+    });
     res.json(completed);
   } catch (err) {
     res.status(500).json({ message: "Server Error", error: err.message });

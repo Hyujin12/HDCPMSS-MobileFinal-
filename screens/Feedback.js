@@ -28,41 +28,57 @@ const FeedbackScreen = () => {
   }, []);
 
   const fetchCompletedAppointments = async () => {
-    try {
-      setLoading(true);
-      const user = await AsyncStorage.getItem("user");
-      const parsedUser = JSON.parse(user);
-      const response = await axios.get(`${BASE_URL}/feedback/${parsedUser._id}`);
-      setCompletedAppointments(response.data);
-    } catch (error) {
-      Alert.alert("Error", "Unable to fetch completed appointments.");
-      console.log(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSubmitFeedback = async () => {
-    if (!rating || !feedback.trim()) {
-      Alert.alert("⚠️ Please fill out both fields before submitting.");
+  try {
+    setLoading(true);
+    const user = await AsyncStorage.getItem("user");
+    if (!user) {
+      Alert.alert("Error", "User not found");
       return;
     }
 
-    try {
-      await axios.post(`${BASE_URL}/feedback/${selectedBooking._id}`, {
-        rating,
-        feedback,
-      });
-      Alert.alert("✅ Feedback submitted successfully!");
-      setModalVisible(false);
-      setRating("");
-      setFeedback("");
-      fetchCompletedAppointments();
-    } catch (error) {
-      Alert.alert("Error", "Failed to submit feedback.");
-      console.log(error);
+    const parsedUser = JSON.parse(user);
+    if (!parsedUser._id) {
+      Alert.alert("Error", "Invalid user ID");
+      return;
     }
-  };
+
+    const response = await axios.get(`${BASE_URL}/feedback/${parsedUser._id}`);
+    console.log("Completed Appointments:", response.data);
+    setCompletedAppointments(response.data || []);
+  } catch (error) {
+    Alert.alert("Error", "Unable to fetch completed appointments.");
+    console.log(error);
+  } finally {
+    setLoading(false);
+  }
+};
+
+const handleSubmitFeedback = async () => {
+  if (!selectedBooking || !selectedBooking._id) {
+    Alert.alert("Error", "No booking selected");
+    return;
+  }
+
+  if (!rating || !feedback.trim()) {
+    Alert.alert("⚠️ Please fill out both fields before submitting.");
+    return;
+  }
+
+  try {
+    await axios.post(`${BASE_URL}/feedback/${selectedBooking._id}`, {
+      rating,
+      feedback,
+    });
+    Alert.alert("✅ Feedback submitted successfully!");
+    setModalVisible(false);
+    setRating("");
+    setFeedback("");
+    fetchCompletedAppointments();
+  } catch (error) {
+    Alert.alert("Error", "Failed to submit feedback.");
+    console.log(error);
+  }
+};
 
   const renderAppointment = ({ item }) => (
     <View style={styles.card}>
