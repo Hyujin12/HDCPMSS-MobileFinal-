@@ -4,7 +4,7 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const userRoutes = require("./routes/UserRoutes");
 const bookedServiceRoutes = require("./routes/BookedServiceRoutes");
-import feedbackRoutes from "./routes/feedback.js";
+const feedbackRoutes = require("./routes/feedback");
 const app = express();
 
 // Middleware
