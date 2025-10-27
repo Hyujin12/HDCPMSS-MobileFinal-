@@ -1,19 +1,24 @@
+// Load environment variables
 require("dotenv").config();
+
+// Import dependencies
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+
+// Import route files
 const userRoutes = require("./routes/UserRoutes");
 const bookedServiceRoutes = require("./routes/BookedServiceRoutes");
 const feedbackRoutes = require("./routes/feedback");
+
+// Initialize Express app
 const app = express();
 
 // Middleware
 app.use(cors());
+app.use(express.json()); // Parse JSON bodies
 
-
-app.use(express.json());
-
-// Routes
+// API Routes
 app.use("/api/users", userRoutes);
 app.use("/api/booked-services", bookedServiceRoutes);
 app.use("/api/feedback", feedbackRoutes);
