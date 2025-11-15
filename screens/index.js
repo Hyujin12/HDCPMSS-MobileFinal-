@@ -22,7 +22,7 @@ import {
 const { width: screenWidth } = Dimensions.get('window');
 
 // ✅ Base API URL (Render Deployment)
-const API_BASE_URL = 'https://hdcpmss-mobilefinal.onrender.com';
+const API_BASE_URL = 'https://hdcpmss-mobilefinal-j60e.onrender.com';
 
 // --- Custom Alert Component ---
 const CustomAlert = ({ visible, type, title, message, onConfirm, onCancel, showCancel = false }) => {
@@ -203,7 +203,7 @@ const LoginScreen = () => {
         <View style={styles.container}>
           <View style={styles.header}>
             <View style={styles.logoContainer}>
-              <Image source={require('../assets/halili logo.png')} style={styles.logo} resizeMode="contain" />
+              <Image source={require('../assets/images/newlogohalili.png')} style={styles.logo} resizeMode="contain" />
             </View>
             <Text style={styles.clinicName}>Halili's Dental Clinic</Text>
             <Text style={styles.tagline}>Sa Halili Ikaw Mapapangiti</Text>

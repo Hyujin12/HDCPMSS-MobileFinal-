@@ -27,6 +27,18 @@ const wp = (percentage) => (screenWidth * percentage) / 100;
 const hp = (percentage) => (screenHeight * percentage) / 100;
 const isSmallDevice = screenWidth < 375;
 const isMediumDevice = screenWidth >= 375 && screenWidth < 414;
+const isLargeDevice = screenWidth >= 414;
+
+// Responsive font sizing
+const fontSize = {
+  xs: isSmallDevice ? 10 : isMediumDevice ? 11 : 12,
+  sm: isSmallDevice ? 12 : isMediumDevice ? 13 : 14,
+  base: isSmallDevice ? 14 : isMediumDevice ? 15 : 16,
+  lg: isSmallDevice ? 16 : isMediumDevice ? 17 : 18,
+  xl: isSmallDevice ? 18 : isMediumDevice ? 20 : 22,
+  '2xl': isSmallDevice ? 22 : isMediumDevice ? 24 : 26,
+  '3xl': isSmallDevice ? 26 : isMediumDevice ? 28 : 30,
+};
 
 // -------------------------
 // Notification handler
@@ -42,7 +54,7 @@ Notifications.setNotificationHandler({
 // -------------------------
 // Backend BASE_URL
 // -------------------------
-const BASE_URL = 'https://hdcpmss-mobilefinal.onrender.com';
+const BASE_URL = 'https://hdcpmss-mobilefinal-j60e.onrender.com';
 
 const HomeScreen = ({ navigation }) => {
   const [appointments, setAppointments] = useState([]);
@@ -54,6 +66,7 @@ const HomeScreen = ({ navigation }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [fadeAnim] = useState(new Animated.Value(0));
+  const [todayAppointments, setTodayAppointments] = useState([]);
 
   useEffect(() => {
     checkTokenAndFetch();
@@ -63,35 +76,28 @@ const HomeScreen = ({ navigation }) => {
     if (!loading) {
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 500,
+        duration: 600,
         useNativeDriver: true,
       }).start();
     }
   }, [loading]);
-useEffect(() => {
-  checkTokenAndFetch();
-}, []);
 
-// Add this NEW useFocusEffect hook right after the above useEffect
-useFocusEffect(
-  useCallback(() => {
-    const refreshData = async () => {
-      try {
-        const token = await AsyncStorage.getItem('token');
-        if (token) {
-          await fetchAppointments(token);
+  useFocusEffect(
+    useCallback(() => {
+      const refreshData = async () => {
+        try {
+          const token = await AsyncStorage.getItem('token');
+          if (token) {
+            await fetchAppointments(token);
+          }
+        } catch (err) {
+          console.error('❌ Error refreshing data:', err);
         }
-      } catch (err) {
-        console.error('❌ Error refreshing data:', err);
-      }
-    };
+      };
+      refreshData();
+    }, [])
+  );
 
-    refreshData();
-  }, [])
-);
-  // -------------------------
-  // Check token & fetch data
-  // -------------------------
   const checkTokenAndFetch = async () => {
     try {
       const token = await AsyncStorage.getItem('token');
@@ -112,9 +118,6 @@ useFocusEffect(
     }
   };
 
-  // -------------------------
-  // Notification permission
-  // -------------------------
   const requestNotificationPermissions = async () => {
     const { status } = await Notifications.requestPermissionsAsync();
     if (status !== 'granted') {
@@ -122,9 +125,6 @@ useFocusEffect(
     }
   };
 
-  // -------------------------
-  // Generate notifications based on appointments
-  // -------------------------
   const generateNotifications = (appointments) => {
     const now = new Date();
     const notifs = [];
@@ -134,7 +134,6 @@ useFocusEffect(
       const timeDiff = aptDateTime - now;
       const hoursDiff = timeDiff / (1000 * 60 * 60);
 
-      // Status change notifications
       if (apt.status.toLowerCase() === 'accepted') {
         notifs.push({
           id: `${apt._id}-accepted`,
@@ -159,18 +158,6 @@ useFocusEffect(
         });
       }
 
-      if (apt.status.toLowerCase() === 'rescheduled') {
-        notifs.push({
-          id: `${apt._id}-rescheduled`,
-          type: 'rescheduled',
-          title: '🔄 Appointment Rescheduled',
-          message: `Your appointment for ${apt.serviceName} has been rescheduled to ${new Date(apt.date).toLocaleDateString()} at ${apt.time}.`,
-          time: new Date(apt.updatedAt || apt.createdAt),
-          appointmentId: apt._id,
-          read: false,
-        });
-      }
-
       if (apt.status.toLowerCase() === 'completed') {
         notifs.push({
           id: `${apt._id}-completed`,
@@ -184,7 +171,6 @@ useFocusEffect(
         });
       }
 
-      // Today's appointment
       if (hoursDiff >= 0 && hoursDiff <= 24 && hoursDiff > 1) {
         notifs.push({
           id: `${apt._id}-today`,
@@ -197,26 +183,12 @@ useFocusEffect(
         });
       }
 
-      // 1 hour before
       if (hoursDiff > 0 && hoursDiff <= 1) {
         notifs.push({
           id: `${apt._id}-soon`,
           type: 'soon',
           title: '⏰ Appointment in 1 Hour',
           message: `Your appointment for ${apt.serviceName} is in less than 1 hour at ${apt.time}.`,
-          time: new Date(),
-          appointmentId: apt._id,
-          read: false,
-        });
-      }
-
-      // Missed appointment
-      if (hoursDiff < 0 && hoursDiff > -24 && apt.status.toLowerCase() !== 'completed' && apt.status.toLowerCase() !== 'cancelled') {
-        notifs.push({
-          id: `${apt._id}-missed`,
-          type: 'missed',
-          title: '⚠️ Missed Appointment',
-          message: `You missed your appointment for ${apt.serviceName} scheduled at ${apt.time} on ${new Date(apt.date).toLocaleDateString()}.`,
           time: new Date(),
           appointmentId: apt._id,
           read: false,
@@ -229,95 +201,80 @@ useFocusEffect(
     setUnreadCount(notifs.filter(n => !n.read).length);
   };
 
-  // -------------------------
-  // Fetch appointments & user info
-  // -------------------------
-  // -------------------------
-// Fetch appointments & user info
-// -------------------------
-const fetchAppointments = async (token) => {
-  try {
-    console.log('🔹 Fetching user profile first...');
-    
-    // First, get the user profile to obtain userId
-    const resProfile = await axios.get(`${BASE_URL}/api/users/profile`, {
-      headers: { Authorization: `Bearer ${token}` },
-      timeout: 5000,
-    });
-    
-    console.log('✅ Profile response:', resProfile.data);
-    const userId = resProfile.data._id || resProfile.data.id;
-    setUsername(resProfile.data.username || 'User');
+  const fetchAppointments = async (token) => {
+    try {
+      console.log('🔹 Fetching user profile first...');
+      
+      const resProfile = await axios.get(`${BASE_URL}/api/users/profile`, {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 5000,
+      });
+      
+      console.log('✅ Profile response:', resProfile.data);
+      const userId = resProfile.data._id || resProfile.data.id;
+      setUsername(resProfile.data.username || 'User');
 
-    if (!userId) {
-      throw new Error('User ID not found in profile');
+      if (!userId) {
+        throw new Error('User ID not found in profile');
+      }
+
+      const resAppointments = await axios.get(`${BASE_URL}/api/booked-services`, {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 5000,
+      });
+
+      const allAppointments = resAppointments.data || [];
+      
+      const userAppointments = allAppointments.filter((apt) => {
+        return apt.userId === userId || 
+               apt.user === userId || 
+               apt.user?._id === userId ||
+               apt.createdBy === userId;
+      });
+
+      setAppointments(userAppointments);
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      // Get today's appointments
+      const todayApts = userAppointments.filter((apt) => {
+        const aptDate = new Date(apt.date);
+        aptDate.setHours(0, 0, 0, 0);
+        return aptDate.getTime() === today.getTime() && 
+               !['completed', 'cancelled'].includes(apt.status.toLowerCase());
+      });
+      setTodayAppointments(todayApts);
+
+      const upcoming = userAppointments
+        .filter((apt) => {
+          const aptDateTime = new Date(`${apt.date}T${apt.time}`);
+          return aptDateTime >= today && !['completed', 'cancelled'].includes(apt.status.toLowerCase());
+        })
+        .sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
+
+      setUpcomingAppointments(upcoming);
+
+      const stats = {
+        total: userAppointments.length,
+        pending: userAppointments.filter((a) => a.status.toLowerCase() === 'pending').length,
+        accepted: userAppointments.filter((a) => a.status.toLowerCase() === 'accepted').length,
+        completed: userAppointments.filter((a) => a.status.toLowerCase() === 'completed').length,
+      };
+      setStats(stats);
+
+      generateNotifications(userAppointments);
+      scheduleNotifications(upcoming);
+    } catch (err) {
+      console.error('❌ Error fetching appointments:', err);
+      Alert.alert('Error', 'Failed to load appointments');
+    } finally {
+      setLoading(false);
     }
+  };
 
-    console.log('🔹 Sending GET request to:', `${BASE_URL}/api/booked-services`);
-    console.log('🔹 Request headers:', { Authorization: `Bearer ${token}` });
-
-    // Fetch all appointments
-    const resAppointments = await axios.get(`${BASE_URL}/api/booked-services`, {
-      headers: { Authorization: `Bearer ${token}` },
-      timeout: 5000,
-    });
-
-    console.log('✅ Appointments response:', resAppointments.data);
-    const allAppointments = resAppointments.data || [];
-    
-    // Filter appointments for the logged-in user
-    // This assumes appointments have a userId or user field that matches the logged-in user
-    const userAppointments = allAppointments.filter((apt) => {
-      // Check various possible field names for user identification
-      return apt.userId === userId || 
-             apt.user === userId || 
-             apt.user?._id === userId ||
-             apt.createdBy === userId;
-    });
-
-    console.log(`📊 Filtered ${userAppointments.length} appointments out of ${allAppointments.length} total`);
-    setAppointments(userAppointments);
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const upcoming = userAppointments
-      .filter((apt) => {
-        const aptDateTime = new Date(`${apt.date}T${apt.time}`);
-        return aptDateTime >= today && !['completed', 'cancelled'].includes(apt.status.toLowerCase());
-      })
-      .sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
-
-    setUpcomingAppointments(upcoming);
-
-    const stats = {
-      total: userAppointments.length,
-      pending: userAppointments.filter((a) => a.status.toLowerCase() === 'pending').length,
-      accepted: userAppointments.filter((a) => a.status.toLowerCase() === 'accepted').length,
-      completed: userAppointments.filter((a) => a.status.toLowerCase() === 'completed').length,
-    };
-    setStats(stats);
-
-    generateNotifications(userAppointments);
-    scheduleNotifications(upcoming);
-  } catch (err) {
-    if (err.response) {
-      console.error('❌ Axios response error:', err.response.status, err.response.data);
-    } else if (err.request) {
-      console.error('❌ Axios no response:', err.request);
-    } else {
-      console.error('❌ Axios setup error:', err.message);
-    }
-
-    Alert.alert('Error', 'Failed to load appointments or user info');
-  } finally {
-    setLoading(false);
-  }
-};
-
-  // -------------------------
-  // Schedule notifications
-  // -------------------------
   const scheduleNotifications = async (appointments) => {
     await Notifications.cancelAllScheduledNotificationsAsync();
 
@@ -355,9 +312,6 @@ const fetchAppointments = async (token) => {
     });
   };
 
-  // -------------------------
-  // Mark notification as read
-  // -------------------------
   const markAsRead = (notificationId) => {
     setNotifications(prev => 
       prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
@@ -365,22 +319,16 @@ const fetchAppointments = async (token) => {
     setUnreadCount(prev => Math.max(0, prev - 1));
   };
 
-  // -------------------------
-  // Mark all as read
-  // -------------------------
   const markAllAsRead = () => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     setUnreadCount(0);
   };
 
-  // -------------------------
-  // UI helpers
-  // -------------------------
   const getStatusConfig = (status) => {
     const statusLower = status.toLowerCase();
     switch (statusLower) {
       case 'accepted': 
-        return { color: '#10B981', bgColor: '#D1FAE5', icon: '✓', label: 'Accepted' };
+        return { color: '#10B981', bgColor: '#D1FAE5', icon: '✓', label: 'Confirmed' };
       case 'pending': 
         return { color: '#F59E0B', bgColor: '#FEF3C7', icon: '⏳', label: 'Pending' };
       case 'completed': 
@@ -396,22 +344,25 @@ const fetchAppointments = async (token) => {
     switch (type) {
       case 'accepted': return '#ECFDF5';
       case 'cancelled': return '#FEF2F2';
-      case 'rescheduled': return '#FEF3C7';
       case 'completed': return '#EFF6FF';
       case 'today': return '#DBEAFE';
       case 'soon': return '#FEF9C3';
-      case 'missed': return '#FEE2E2';
       default: return '#F9FAFB';
     }
+  };
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 18) return 'Good Afternoon';
+    return 'Good Evening';
   };
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <View style={styles.loadingContent}>
-          <ActivityIndicator size="large" color="#048E04" />
-          <Text style={styles.loadingText}>Loading your dashboard...</Text>
-        </View>
+        <ActivityIndicator size="large" color="#048E04" />
+        <Text style={styles.loadingText}>Loading your dashboard...</Text>
       </View>
     );
   }
@@ -420,244 +371,270 @@ const fetchAppointments = async (token) => {
     <>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
       <SafeAreaView style={styles.safeArea}>
-        <Animated.ScrollView 
-          style={styles.container}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-        >
-          {/* Header */}
-          <View style={styles.headerContainer}>
-            <View style={styles.clinicInfo}>
-              <View style={styles.logoWrapper}>
-                <Image
-                  source={require('../assets/halili logo.png')}
-                  style={styles.clinicLogo}
-                  resizeMode="contain"
-                />
-              </View>
-              <View style={styles.clinicTextContainer}>
-                <Text style={styles.clinicName}>Halili's Dental Clinic</Text>
-                <Text style={styles.clinicTagline}>Professional Care</Text>
-              </View>
-            </View>
-            <View style={styles.headerRight}>
-              <TouchableOpacity 
-                style={styles.notificationButton}
-                onPress={() => setShowNotifications(true)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.notificationIconWrapper}>
-                  <Text style={styles.bellIcon}>🔔</Text>
-                  {unreadCount > 0 && (
-                    <View style={styles.badge}>
-                      <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
-                    </View>
-                  )}
+        <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+          <ScrollView 
+            style={styles.container}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+          >
+            {/* Header */}
+            <View style={styles.header}>
+              <View style={styles.headerTop}>
+                <View style={styles.clinicInfo}>
+                  <View style={styles.logoContainer}>
+                    <Image
+                      source={require('../assets/halili logo.png')}
+                      style={styles.logo}
+                      resizeMode="contain"
+                    />
+                  </View>
+                  <View style={styles.clinicTextContainer}>
+                    <Text style={styles.clinicName}>Halili's Dental Clinic</Text>
+                    <Text style={styles.clinicSubtitle}>Professional Dental Care</Text>
+                  </View>
                 </View>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.profileButton} 
-                onPress={() => navigation.navigate('Profile')}
-                activeOpacity={0.7}
-              >
-                <View style={styles.profileContainer}>
-                  <Image
-                    source={{ uri: 'https://cdn.builder.io/api/v1/image/assets/TEMP/710b09d5dcde3cacc180fc426a3bbdf2b55f80be?apiKey=b83e627850f647aa94da00dc54b22383' }}
-                    style={styles.profileImage}
-                  />
+                
+                <View style={styles.headerActions}>
+                  <TouchableOpacity 
+                    style={styles.notificationButton}
+                    onPress={() => setShowNotifications(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.notificationIcon}>🔔</Text>
+                    {unreadCount > 0 && (
+                      <View style={styles.notificationBadge}>
+                        <Text style={styles.notificationBadgeText}>
+                          {unreadCount > 9 ? '9+' : unreadCount}
+                        </Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={styles.profileButton} 
+                    onPress={() => navigation.navigate('Profile')}
+                    activeOpacity={0.7}
+                  >
+                    <Image
+                      source={{ uri: 'https://cdn.builder.io/api/v1/image/assets/TEMP/710b09d5dcde3cacc180fc426a3bbdf2b55f80be?apiKey=b83e627850f647aa94da00dc54b22383' }}
+                      style={styles.profileImage}
+                    />
+                  </TouchableOpacity>
                 </View>
-              </TouchableOpacity>
-            </View>
-          </View>
+              </View>
 
-          {/* Welcome Section */}
-          <View style={styles.welcomeSection}>
-            <Text style={styles.greetingText}>Hello, {username}! 👋</Text>
-            <Text style={styles.subtitleText}>Let's start your day with a smile</Text>
-          </View>
-
-          {/* Quick Stats */}
-          <View style={styles.statsContainer}>
-            <View style={[styles.statCard, styles.statCardTotal]}>
-              <View style={styles.statIconContainer}>
-                <Text style={styles.statIcon}>📊</Text>
-              </View>
-              <Text style={styles.statNumber}>{stats.total}</Text>
-              <Text style={styles.statLabel}>Total</Text>
-            </View>
-            <View style={[styles.statCard, styles.statCardPending]}>
-              <View style={styles.statIconContainer}>
-                <Text style={styles.statIcon}>⏳</Text>
-              </View>
-              <Text style={styles.statNumber}>{stats.pending}</Text>
-              <Text style={styles.statLabel}>Pending</Text>
-            </View>
-            <View style={[styles.statCard, styles.statCardAccepted]}>
-              <View style={styles.statIconContainer}>
-                <Text style={styles.statIcon}>✓</Text>
-              </View>
-              <Text style={styles.statNumber}>{stats.accepted}</Text>
-              <Text style={styles.statLabel}>Accepted</Text>
-            </View>
-            <View style={[styles.statCard, styles.statCardCompleted]}>
-              <View style={styles.statIconContainer}>
-                <Text style={styles.statIcon}>✓</Text>
-              </View>
-              <Text style={styles.statNumber}>{stats.completed}</Text>
-              <Text style={styles.statLabel}>Completed</Text>
-            </View>
-          </View>
-
-          {/* Quick Actions */}
-          <View style={styles.actionsSection}>
-            <Text style={styles.sectionTitle}>Quick Actions</Text>
-            <View style={styles.actionsGrid}>
-              <TouchableOpacity 
-                style={styles.actionCard} 
-                onPress={() => navigation.navigate('BookAppointment')}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.actionIconContainer, { backgroundColor: '#ECFDF5' }]}>
-                  <Text style={styles.actionIcon}>📅</Text>
-                </View>
-                <Text style={styles.actionText}>Book</Text>
-                <Text style={styles.actionSubtext}>New Appointment</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.actionCard} 
-                onPress={() => navigation.navigate('AllAppointments')}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.actionIconContainer, { backgroundColor: '#EFF6FF' }]}>
-                  <Text style={styles.actionIcon}>📋</Text>
-                </View>
-                <Text style={styles.actionText}>View All</Text>
-                <Text style={styles.actionSubtext}>Appointments</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.actionCard} 
-                onPress={() => navigation.navigate('FeedbackScreen')}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.actionIconContainer, { backgroundColor: '#FEF3C7' }]}>
-                  <Text style={styles.actionIcon}>🦷</Text>
-                </View>
-                <Text style={styles.actionText}>Services</Text>
-                <Text style={styles.actionSubtext}>Our Offerings</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.actionCard} 
-                onPress={() => navigation.navigate('History')}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.actionIconContainer, { backgroundColor: '#F3E5F5' }]}>
-                  <Text style={styles.actionIcon}>📜</Text>
-                </View>
-                <Text style={styles.actionText}>History</Text>
-                <Text style={styles.actionSubtext}>Past Records</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Upcoming Appointments */}
-          <View style={styles.appointmentsSection}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Upcoming Appointments</Text>
-              {upcomingAppointments.length > 0 && (
-                <TouchableOpacity 
-                  onPress={() => navigation.navigate('AllAppointments')}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.seeAllText}>See All →</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {upcomingAppointments.length === 0 ? (
-              <View style={styles.emptyState}>
-                <View style={styles.emptyStateIconContainer}>
-                  <Text style={styles.emptyStateIcon}>📅</Text>
-                </View>
-                <Text style={styles.emptyStateTitle}>No Upcoming Appointments</Text>
-                <Text style={styles.emptyStateText}>
-                  Schedule your next dental visit today
+              {/* Welcome Section */}
+              <View style={styles.welcomeSection}>
+                <Text style={styles.greeting}>{getGreeting()},</Text>
+                <Text style={styles.userName}>{username}</Text>
+                <Text style={styles.welcomeSubtext}>
+                  {upcomingAppointments.length > 0 
+                    ? `You have ${upcomingAppointments.length} upcoming appointment${upcomingAppointments.length > 1 ? 's' : ''}`
+                    : 'Your dental health is our priority'}
                 </Text>
+              </View>
+            </View>
+
+            {/* Today's Appointments Banner */}
+            {todayAppointments.length > 0 && (
+              <View style={styles.todayBanner}>
+                <View style={styles.todayBannerContent}>
+                  <View style={styles.todayBannerIcon}>
+                    <Text style={styles.todayBannerIconText}>📅</Text>
+                  </View>
+                  <View style={styles.todayBannerTextContainer}>
+                    <Text style={styles.todayBannerTitle}>Today's Appointments</Text>
+                    <Text style={styles.todayBannerSubtitle}>
+                      {todayAppointments.length} appointment{todayAppointments.length > 1 ? 's' : ''} scheduled
+                    </Text>
+                  </View>
+                  <TouchableOpacity 
+                    style={styles.todayBannerButton}
+                    onPress={() => navigation.navigate('AllAppointments')}
+                  >
+                    <Text style={styles.todayBannerButtonText}>View</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* Stats Grid */}
+            <View style={styles.statsGrid}>
+              <View style={[styles.statCard, styles.statCardPrimary]}>
+                <View style={styles.statIconContainer}>
+                  <Text style={styles.statIcon}>📊</Text>
+                </View>
+                <Text style={styles.statValue}>{stats.total}</Text>
+                <Text style={styles.statLabel}>Total Appointments</Text>
+              </View>
+
+              <View style={[styles.statCard, styles.statCardWarning]}>
+                <View style={styles.statIconContainer}>
+                  <Text style={styles.statIcon}>⏳</Text>
+                </View>
+                <Text style={styles.statValue}>{stats.pending}</Text>
+                <Text style={styles.statLabel}>Pending</Text>
+              </View>
+
+              <View style={[styles.statCard, styles.statCardSuccess]}>
+                <View style={styles.statIconContainer}>
+                  <Text style={styles.statIcon}>✓</Text>
+                </View>
+                <Text style={styles.statValue}>{stats.accepted}</Text>
+                <Text style={styles.statLabel}>Confirmed</Text>
+              </View>
+
+              <View style={[styles.statCard, styles.statCardInfo]}>
+                <View style={styles.statIconContainer}>
+                  <Text style={styles.statIcon}>✓</Text>
+                </View>
+                <Text style={styles.statValue}>{stats.completed}</Text>
+                <Text style={styles.statLabel}>Completed</Text>
+              </View>
+            </View>
+
+            {/* Quick Actions */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Quick Actions</Text>
+              <View style={styles.quickActions}>
                 <TouchableOpacity 
-                  style={styles.bookNowButton} 
+                  style={[styles.actionCard, styles.actionCardBook]}
                   onPress={() => navigation.navigate('BookAppointment')}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.bookNowText}>Book Appointment</Text>
+                  <View style={styles.actionIconWrapper}>
+                    <Text style={styles.actionIcon}>📅</Text>
+                  </View>
+                  <Text style={styles.actionTitle}>Book Appointment</Text>
+                  <Text style={styles.actionDescription}>Schedule your visit</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.actionCard, styles.actionCardView]}
+                  onPress={() => navigation.navigate('AllAppointments')}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.actionIconWrapper}>
+                    <Text style={styles.actionIcon}>📋</Text>
+                  </View>
+                  <Text style={styles.actionTitle}>My Appointments</Text>
+                  <Text style={styles.actionDescription}>View all bookings</Text>
                 </TouchableOpacity>
               </View>
-            ) : (
-              upcomingAppointments.slice(0, 3).map((appointment) => {
-                const statusConfig = getStatusConfig(appointment.status);
-                return (
-                  <TouchableOpacity
-                    key={appointment._id}
-                    style={styles.appointmentCard}
-                    onPress={() => navigation.navigate('AppointmentDetails', { appointment })}
+            </View>
+
+            {/* Upcoming Appointments */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Upcoming Appointments</Text>
+                {upcomingAppointments.length > 2 && (
+                  <TouchableOpacity 
+                    onPress={() => navigation.navigate('AllAppointments')}
                     activeOpacity={0.7}
                   >
-                    <View style={styles.appointmentIconContainer}>
-                      <Text style={styles.appointmentTypeIcon}>🦷</Text>
-                    </View>
-                    <View style={styles.appointmentInfo}>
-                      <Text style={styles.appointmentTitle}>{appointment.serviceName}</Text>
-                      <View style={styles.appointmentMetaRow}>
-                        <Text style={styles.appointmentMeta}>
-                          📅 {new Date(appointment.date).toLocaleDateString('en-US', {
-                            weekday: 'short',
-                            month: 'short',
-                            day: 'numeric',
-                          })}
-                        </Text>
-                        <Text style={styles.appointmentMeta}>🕐 {appointment.time}</Text>
-                      </View>
-                      <Text style={styles.appointmentPatient}>👤 {appointment.username}</Text>
-                      <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
-                        <Text style={[styles.statusText, { color: statusConfig.color }]}>
-                          {statusConfig.icon} {statusConfig.label}
-                        </Text>
-                      </View>
-                    </View>
+                    <Text style={styles.viewAllText}>View All →</Text>
                   </TouchableOpacity>
-                );
-              })
-            )}
-          </View>
+                )}
+              </View>
 
-          {/* Dental Care Tips */}
-          <View style={styles.tipsSection}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Dental Care Tips</Text>
-              <Text style={styles.tipsBadge}>💡</Text>
+              {upcomingAppointments.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <View style={styles.emptyStateIcon}>
+                    <Text style={styles.emptyStateIconText}>📅</Text>
+                  </View>
+                  <Text style={styles.emptyStateTitle}>No Upcoming Appointments</Text>
+                  <Text style={styles.emptyStateDescription}>
+                    Book your next dental checkup to maintain optimal oral health
+                  </Text>
+                  <TouchableOpacity 
+                    style={styles.emptyStateButton}
+                    onPress={() => navigation.navigate('BookAppointment')}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.emptyStateButtonText}>Book Now</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                upcomingAppointments.slice(0, 3).map((appointment) => {
+                  const statusConfig = getStatusConfig(appointment.status);
+                  return (
+                    <TouchableOpacity
+                      key={appointment._id}
+                      style={styles.appointmentCard}
+                      onPress={() => navigation.navigate('AppointmentDetails', { appointment })}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.appointmentCardHeader}>
+                        <View style={styles.appointmentIconCircle}>
+                          <Text style={styles.appointmentIcon}>🦷</Text>
+                        </View>
+                        <View style={styles.appointmentCardHeaderInfo}>
+                          <Text style={styles.appointmentService}>{appointment.serviceName}</Text>
+                          <Text style={styles.appointmentPatient}>👤 {appointment.username}</Text>
+                        </View>
+                        <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
+                          <Text style={[styles.statusBadgeText, { color: statusConfig.color }]}>
+                            {statusConfig.label}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={styles.appointmentCardFooter}>
+                        <View style={styles.appointmentDetail}>
+                          <Text style={styles.appointmentDetailIcon}>📅</Text>
+                          <Text style={styles.appointmentDetailText}>
+                            {new Date(appointment.date).toLocaleDateString('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                            })}
+                          </Text>
+                        </View>
+                        <View style={styles.appointmentDetail}>
+                          <Text style={styles.appointmentDetailIcon}>🕐</Text>
+                          <Text style={styles.appointmentDetailText}>{appointment.time}</Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })
+              )}
             </View>
-            <View style={styles.tipCard}>
-              <View style={styles.tipItem}>
-                <Text style={styles.tipBullet}>•</Text>
-                <Text style={styles.tipText}>Brush twice daily for 2 minutes</Text>
+
+            {/* Health Tips */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Dental Care Tips</Text>
+                <Text style={styles.tipsEmoji}>💡</Text>
               </View>
-              <View style={styles.tipItem}>
-                <Text style={styles.tipBullet}>•</Text>
-                <Text style={styles.tipText}>Floss at least once a day</Text>
-              </View>
-              <View style={styles.tipItem}>
-                <Text style={styles.tipBullet}>•</Text>
-                <Text style={styles.tipText}>Visit your dentist every 6 months</Text>
-              </View>
-              <View style={styles.tipItem}>
-                <Text style={styles.tipBullet}>•</Text>
-                <Text style={styles.tipText}>Limit sugary foods and drinks</Text>
+              <View style={styles.tipsCard}>
+                <View style={styles.tipItem}>
+                  <View style={styles.tipIconContainer}>
+                    <Text style={styles.tipIcon}>🪥</Text>
+                  </View>
+                  <Text style={styles.tipText}>Brush twice daily for at least 2 minutes</Text>
+                </View>
+                <View style={styles.tipItem}>
+                  <View style={styles.tipIconContainer}>
+                    <Text style={styles.tipIcon}>🧵</Text>
+                  </View>
+                  <Text style={styles.tipText}>Floss daily to remove plaque between teeth</Text>
+                </View>
+                <View style={styles.tipItem}>
+                  <View style={styles.tipIconContainer}>
+                    <Text style={styles.tipIcon}>🥤</Text>
+                  </View>
+                  <Text style={styles.tipText}>Limit sugary drinks and acidic foods</Text>
+                </View>
+                <View style={styles.tipItem}>
+                  <View style={styles.tipIconContainer}>
+                    <Text style={styles.tipIcon}>👨‍⚕️</Text>
+                  </View>
+                  <Text style={styles.tipText}>Visit your dentist every 6 months</Text>
+                </View>
               </View>
             </View>
-          </View>
-        </Animated.ScrollView>
+          </ScrollView>
+        </Animated.View>
 
         {/* Notification Modal */}
         <Modal
@@ -670,37 +647,38 @@ const fetchAppointments = async (token) => {
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Notifications</Text>
-                <View style={styles.modalHeaderRight}>
+                <View style={styles.modalHeaderActions}>
                   {unreadCount > 0 && (
                     <TouchableOpacity 
-                      onPress={markAllAsRead} 
+                      onPress={markAllAsRead}
                       style={styles.markAllButton}
                       activeOpacity={0.7}
                     >
-                      <Text style={styles.markAllText}>Mark all read</Text>
+                      <Text style={styles.markAllButtonText}>Mark all read</Text>
                     </TouchableOpacity>
                   )}
                   <TouchableOpacity 
                     onPress={() => setShowNotifications(false)}
+                    style={styles.closeModalButton}
                     activeOpacity={0.7}
                   >
-                    <Text style={styles.closeButton}>✕</Text>
+                    <Text style={styles.closeModalButtonText}>✕</Text>
                   </TouchableOpacity>
                 </View>
               </View>
 
               <ScrollView 
-                style={styles.notificationList}
+                style={styles.notificationsList}
                 showsVerticalScrollIndicator={false}
               >
                 {notifications.length === 0 ? (
                   <View style={styles.emptyNotifications}>
-                    <View style={styles.emptyNotificationIconContainer}>
-                      <Text style={styles.emptyNotificationsIcon}>🔔</Text>
+                    <View style={styles.emptyNotificationsIcon}>
+                      <Text style={styles.emptyNotificationsIconText}>🔔</Text>
                     </View>
                     <Text style={styles.emptyNotificationsTitle}>No Notifications</Text>
                     <Text style={styles.emptyNotificationsText}>
-                      You're all caught up!
+                      You're all caught up! Check back later for updates.
                     </Text>
                   </View>
                 ) : (
@@ -724,11 +702,11 @@ const fetchAppointments = async (token) => {
                       }}
                       activeOpacity={0.7}
                     >
-                      {!notif.read && <View style={styles.unreadDot} />}
-                      <View style={styles.notificationContent}>
-                        <Text style={styles.notificationTitle}>{notif.title}</Text>
-                        <Text style={styles.notificationMessage}>{notif.message}</Text>
-                        <Text style={styles.notificationTime}>
+                      {!notif.read && <View style={styles.unreadIndicator} />}
+                      <View style={styles.notificationItemContent}>
+                        <Text style={styles.notificationItemTitle}>{notif.title}</Text>
+                        <Text style={styles.notificationItemMessage}>{notif.message}</Text>
+                        <Text style={styles.notificationItemTime}>
                           {notif.time.toLocaleDateString()} • {notif.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </Text>
                       </View>
@@ -752,50 +730,55 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  loadingContent: {
-    alignItems: 'center',
-  },
   loadingText: {
-    marginTop: hp(2),
-    fontSize: isSmallDevice ? wp(3.8) : wp(4),
+    marginTop: 16,
+    fontSize: fontSize.base,
     color: '#6B7280',
     fontWeight: '500',
   },
 
   // Main Container
-  safeArea: { 
-    flex: 1, 
-    backgroundColor: '#fff' 
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#fff',
   },
-  container: { 
-    flex: 1, 
-    backgroundColor: '#F9FAFB',
+  container: {
+    flex: 1,
+    backgroundColor: '#F8F9FA',
   },
   scrollContent: {
     paddingBottom: hp(3),
   },
 
   // Header
-  headerContainer: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
+  header: {
+    backgroundColor: '#fff',
+    paddingTop: hp(2),
+    paddingBottom: hp(2.5),
+    borderBottomLeftRadius: wp(6),
+    borderBottomRightRadius: wp(6),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: wp(5),
-    paddingTop: hp(2),
-    paddingBottom: hp(2),
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    marginBottom: hp(2),
   },
-  clinicInfo: { 
-    flexDirection: 'row', 
+  clinicInfo: {
+    flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
   },
-  logoWrapper: {
-    width: wp(11),
-    height: wp(11),
-    borderRadius: wp(5.5),
+  logoContainer: {
+    width: wp(12),
+    height: wp(12),
+    borderRadius: wp(6),
     backgroundColor: '#F0FDF4',
     justifyContent: 'center',
     alignItems: 'center',
@@ -805,179 +788,247 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  clinicLogo: { 
-    width: wp(7), 
-    height: wp(7),
+  logo: {
+    width: wp(8),
+    height: wp(8),
   },
   clinicTextContainer: {
     marginLeft: wp(3),
     flex: 1,
   },
-  clinicName: { 
-    fontSize: isSmallDevice ? wp(3.8) : wp(4.2),
+  clinicName: {
+    fontSize: fontSize.lg,
     fontWeight: '700',
     color: '#1F2937',
     letterSpacing: -0.3,
   },
-  clinicTagline: {
-    fontSize: isSmallDevice ? wp(2.8) : wp(3),
+  clinicSubtitle: {
+    fontSize: fontSize.xs,
     fontWeight: '500',
     color: '#048E04',
-    marginTop: hp(0.2),
+    marginTop: 2,
   },
-  headerRight: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: wp(3),
   },
-  notificationButton: { 
-    position: 'relative',
-  },
-  notificationIconWrapper: {
-    width: wp(10),
-    height: wp(10),
-    borderRadius: wp(5),
+  notificationButton: {
+    width: wp(11),
+    height: wp(11),
+    borderRadius: wp(5.5),
     backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
   },
-  bellIcon: { 
+  notificationIcon: {
     fontSize: wp(5.5),
   },
-  badge: { 
-    position: 'absolute', 
-    top: -hp(0.5), 
-    right: -wp(1), 
-    backgroundColor: '#EF4444', 
-    borderRadius: wp(2.5), 
-    minWidth: wp(5), 
-    height: wp(5), 
-    justifyContent: 'center', 
+  notificationBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: '#EF4444',
+    borderRadius: wp(2.5),
+    minWidth: wp(5),
+    height: wp(5),
+    justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: wp(1),
     borderWidth: 2,
     borderColor: '#fff',
   },
-  badgeText: { 
-    color: '#fff', 
-    fontSize: isSmallDevice ? wp(2.5) : wp(2.8), 
+  notificationBadgeText: {
+    color: '#fff',
+    fontSize: fontSize.xs,
     fontWeight: '700',
   },
   profileButton: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  profileContainer: {
-    width: wp(10),
-    height: wp(10),
-    borderRadius: wp(5),
+    width: wp(11),
+    height: wp(11),
+    borderRadius: wp(5.5),
     overflow: 'hidden',
     borderWidth: 2,
     borderColor: '#048E04',
   },
-  profileImage: { 
-    width: '100%', 
+  profileImage: {
+    width: '100%',
     height: '100%',
   },
 
   // Welcome Section
   welcomeSection: {
     paddingHorizontal: wp(5),
-    paddingTop: hp(3),
-    paddingBottom: hp(2),
-    backgroundColor: '#fff',
   },
-  greetingText: { 
-    fontSize: isSmallDevice ? wp(6.5) : wp(7),
+  greeting: {
+    fontSize: fontSize.base,
+    color: '#6B7280',
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  userName: {
+    fontSize: fontSize['3xl'],
     fontWeight: '700',
     color: '#1F2937',
+    marginBottom: 6,
     letterSpacing: -0.5,
   },
-  subtitleText: { 
-    fontSize: isSmallDevice ? wp(3.5) : wp(3.8),
+  welcomeSubtext: {
+    fontSize: fontSize.sm,
     color: '#6B7280',
-    marginTop: hp(0.8),
     fontWeight: '400',
   },
 
-  // Stats Container
-  statsContainer: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between',
-    paddingHorizontal: wp(5),
-    paddingTop: hp(2),
-    paddingBottom: hp(2),
-    gap: wp(2),
+  // Today's Banner
+  todayBanner: {
+    marginHorizontal: wp(5),
+    marginTop: hp(2),
+    backgroundColor: '#EFF6FF',
+    borderRadius: wp(4),
+    borderLeftWidth: 4,
+    borderLeftColor: '#3B82F6',
+    overflow: 'hidden',
   },
-  statCard: { 
+  todayBannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: wp(4),
+  },
+  todayBannerIcon: {
+    width: wp(12),
+    height: wp(12),
+    borderRadius: wp(6),
+    backgroundColor: '#DBEAFE',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: wp(3),
+  },
+  todayBannerIconText: {
+    fontSize: wp(6),
+  },
+  todayBannerTextContainer: {
     flex: 1,
+  },
+  todayBannerTitle: {
+    fontSize: fontSize.base,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 2,
+  },
+  todayBannerSubtitle: {
+    fontSize: fontSize.sm,
+    color: '#6B7280',
+  },
+  todayBannerButton: {
+    backgroundColor: '#3B82F6',
+    paddingHorizontal: wp(4),
+    paddingVertical: hp(1),
+    borderRadius: wp(2),
+  },
+  todayBannerButtonText: {
+    color: '#fff',
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+  },
+
+  // Stats Grid
+  statsGrid: {
+    flexDirection: 'row',
+    paddingHorizontal: wp(5),
+    marginTop: hp(2.5),
+    gap: wp(2.5),
+  },
+  statCard: {
+    flex: 4,
+    backgroundColor: '#fff',
+    borderRadius: wp(3.5),
     paddingVertical: hp(2),
     paddingHorizontal: wp(2),
-    borderRadius: wp(3),
     alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
     elevation: 2,
     borderWidth: 1,
+    minHeight: hp(11),
   },
-  statCardTotal: {
-    backgroundColor: '#EFF6FF',
+  statCardPrimary: {
     borderColor: '#DBEAFE',
+    backgroundColor: '#EFF6FF',
   },
-  statCardPending: {
-    backgroundColor: '#FFFBEB',
+  statCardWarning: {
     borderColor: '#FEF3C7',
+    backgroundColor: '#FFFBEB',
   },
-  statCardAccepted: {
-    backgroundColor: '#ECFDF5',
+  statCardSuccess: {
     borderColor: '#D1FAE5',
+    backgroundColor: '#ECFDF5',
   },
-  statCardCompleted: {
-    backgroundColor: '#F5F3FF',
+  statCardInfo: {
     borderColor: '#E9D5FF',
+    backgroundColor: '#F5F3FF',
   },
   statIconContainer: {
+    width: wp(10),
+    height: wp(10),
+    borderRadius: wp(5),
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: hp(0.8),
   },
   statIcon: {
-    fontSize: wp(6),
+    fontSize: wp(5.5),
   },
-  statNumber: { 
-    fontSize: isSmallDevice ? wp(6) : wp(7),
+  statValue: {
+    fontSize: isSmallDevice ? fontSize.xl : fontSize['2xl'],
     fontWeight: '700',
     color: '#1F2937',
+    marginBottom: 2,
   },
-  statLabel: { 
-    fontSize: isSmallDevice ? wp(2.8) : wp(3),
+  statLabel: {
+    fontSize: isSmallDevice ? 9 : fontSize.xs,
     color: '#6B7280',
-    marginTop: hp(0.5),
-    fontWeight: '500',
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: isSmallDevice ? 12 : 14,
   },
 
-  // Actions Section
-  actionsSection: {
+  // Section
+  section: {
     paddingHorizontal: wp(5),
-    paddingTop: hp(3),
+    marginTop: hp(3),
   },
-  sectionTitle: { 
-    fontSize: isSmallDevice ? wp(4.5) : wp(5),
-    fontWeight: '700',
-    color: '#1F2937',
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: hp(1.5),
   },
-  actionsGrid: {
+  sectionTitle: {
+    fontSize: fontSize.xl,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  viewAllText: {
+    fontSize: fontSize.sm,
+    color: '#048E04',
+    fontWeight: '600',
+  },
+  tipsEmoji: {
+    fontSize: wp(5),
+  },
+
+  // Quick Actions
+  quickActions: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
     gap: wp(3),
   },
   actionCard: {
-    width: '48%',
+    flex: 1,
     backgroundColor: '#fff',
     borderRadius: wp(4),
     padding: wp(4),
@@ -988,54 +1039,50 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
   },
-  actionIconContainer: {
-    width: wp(14),
-    height: wp(14),
-    borderRadius: wp(7),
+  actionCardBook: {
+    borderColor: '#D1FAE5',
+    backgroundColor: '#ECFDF5',
+  },
+  actionCardView: {
+    borderColor: '#DBEAFE',
+    backgroundColor: '#EFF6FF',
+  },
+  actionIconWrapper: {
+    width: wp(16),
+    height: wp(16),
+    borderRadius: wp(8),
+    backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: hp(1.5),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  actionIcon: { 
-    fontSize: wp(7),
+  actionIcon: {
+    fontSize: wp(8),
   },
-  actionText: { 
-    fontSize: isSmallDevice ? wp(3.8) : wp(4),
+  actionTitle: {
+    fontSize: fontSize.base,
     fontWeight: '700',
     color: '#1F2937',
     textAlign: 'center',
+    marginBottom: 4,
   },
-  actionSubtext: {
-    fontSize: isSmallDevice ? wp(2.8) : wp(3),
+  actionDescription: {
+    fontSize: fontSize.xs,
     color: '#6B7280',
-    marginTop: hp(0.3),
     textAlign: 'center',
   },
 
-  // Appointments Section
-  appointmentsSection: {
-    paddingHorizontal: wp(5),
-    paddingTop: hp(3),
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: hp(1.5),
-  },
-  seeAllText: { 
-    fontSize: isSmallDevice ? wp(3.5) : wp(3.8),
-    color: '#048E04',
-    fontWeight: '600',
-  },
-  appointmentCard: { 
-    flexDirection: 'row', 
-    alignItems: 'flex-start',
-    padding: wp(4),
+  // Appointment Card
+  appointmentCard: {
     backgroundColor: '#fff',
     borderRadius: wp(4),
+    padding: wp(4),
     marginBottom: hp(1.5),
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -1045,65 +1092,77 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#F3F4F6',
   },
-  appointmentIconContainer: { 
-    width: wp(13),
-    height: wp(13),
-    borderRadius: wp(6.5),
+  appointmentCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: hp(1.5),
+  },
+  appointmentIconCircle: {
+    width: wp(12),
+    height: wp(12),
+    borderRadius: wp(6),
     backgroundColor: '#F0FDF4',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: wp(3),
   },
-  appointmentTypeIcon: {
+  appointmentIcon: {
     fontSize: wp(6),
   },
-  appointmentInfo: { 
+  appointmentCardHeaderInfo: {
     flex: 1,
   },
-  appointmentTitle: { 
-    fontSize: isSmallDevice ? wp(4) : wp(4.3),
+  appointmentService: {
+    fontSize: fontSize.base,
     fontWeight: '700',
     color: '#1F2937',
-    marginBottom: hp(0.8),
+    marginBottom: 4,
   },
-  appointmentMetaRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: wp(3),
-    marginBottom: hp(0.5),
-  },
-  appointmentMeta: { 
-    fontSize: isSmallDevice ? wp(3.2) : wp(3.5),
+  appointmentPatient: {
+    fontSize: fontSize.sm,
     color: '#6B7280',
-    fontWeight: '500',
   },
-  appointmentPatient: { 
-    fontSize: isSmallDevice ? wp(3.2) : wp(3.5),
-    color: '#6B7280',
-    marginBottom: hp(1),
-  },
-  statusBadge: { 
+  statusBadge: {
     paddingHorizontal: wp(3),
     paddingVertical: hp(0.6),
     borderRadius: wp(2),
-    alignSelf: 'flex-start',
   },
-  statusText: { 
-    fontSize: isSmallDevice ? wp(2.8) : wp(3),
+  statusBadgeText: {
+    fontSize: fontSize.xs,
     fontWeight: '700',
+  },
+  appointmentCardFooter: {
+    flexDirection: 'row',
+    gap: wp(4),
+    paddingTop: hp(1.5),
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  appointmentDetail: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  appointmentDetailIcon: {
+    fontSize: wp(4),
+    marginRight: wp(1.5),
+  },
+  appointmentDetailText: {
+    fontSize: fontSize.sm,
+    color: '#6B7280',
+    fontWeight: '500',
   },
 
   // Empty State
-  emptyState: { 
-    alignItems: 'center',
-    paddingVertical: hp(4),
+  emptyState: {
     backgroundColor: '#fff',
     borderRadius: wp(4),
+    padding: wp(6),
+    alignItems: 'center',
     borderWidth: 2,
     borderColor: '#F3F4F6',
     borderStyle: 'dashed',
   },
-  emptyStateIconContainer: {
+  emptyStateIcon: {
     width: wp(20),
     height: wp(20),
     borderRadius: wp(10),
@@ -1112,23 +1171,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: hp(2),
   },
-  emptyStateIcon: { 
-    fontSize: wp(12),
+  emptyStateIconText: {
+    fontSize: wp(10),
   },
   emptyStateTitle: {
-    fontSize: isSmallDevice ? wp(4.5) : wp(5),
+    fontSize: fontSize.lg,
     fontWeight: '700',
     color: '#1F2937',
-    marginBottom: hp(0.8),
-  },
-  emptyStateText: { 
-    fontSize: isSmallDevice ? wp(3.5) : wp(3.8),
-    color: '#6B7280',
-    marginBottom: hp(2.5),
+    marginBottom: hp(1),
     textAlign: 'center',
-    paddingHorizontal: wp(5),
   },
-  bookNowButton: { 
+  emptyStateDescription: {
+    fontSize: fontSize.sm,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: hp(2.5),
+    lineHeight: 20,
+    paddingHorizontal: wp(4),
+  },
+  emptyStateButton: {
     backgroundColor: '#048E04',
     paddingHorizontal: wp(8),
     paddingVertical: hp(1.5),
@@ -1139,25 +1200,17 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  bookNowText: { 
+  emptyStateButtonText: {
     color: '#fff',
+    fontSize: fontSize.base,
     fontWeight: '700',
-    fontSize: isSmallDevice ? wp(3.8) : wp(4),
   },
 
-  // Tips Section
-  tipsSection: {
-    paddingHorizontal: wp(5),
-    paddingTop: hp(3),
-    paddingBottom: hp(2),
-  },
-  tipsBadge: {
-    fontSize: wp(5),
-  },
-  tipCard: { 
-    backgroundColor: '#FFFBEB',
-    padding: wp(4),
+  // Tips Card
+  tipsCard: {
+    backgroundColor: '#fff',
     borderRadius: wp(4),
+    padding: wp(4),
     borderLeftWidth: 4,
     borderLeftColor: '#F59E0B',
     shadowColor: '#000',
@@ -1168,21 +1221,26 @@ const styles = StyleSheet.create({
   },
   tipItem: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: hp(1),
+    alignItems: 'center',
+    marginBottom: hp(1.5),
   },
-  tipBullet: {
-    fontSize: isSmallDevice ? wp(4) : wp(4.5),
-    color: '#F59E0B',
-    fontWeight: '700',
-    marginRight: wp(2),
-    lineHeight: wp(5.5),
+  tipIconContainer: {
+    width: wp(10),
+    height: wp(10),
+    borderRadius: wp(5),
+    backgroundColor: '#FFFBEB',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: wp(3),
   },
-  tipText: { 
+  tipIcon: {
+    fontSize: wp(5),
+  },
+  tipText: {
     flex: 1,
-    fontSize: isSmallDevice ? wp(3.5) : wp(3.8),
-    lineHeight: wp(5.5),
+    fontSize: fontSize.sm,
     color: '#374151',
+    lineHeight: 20,
   },
 
   // Modal
@@ -1208,11 +1266,11 @@ const styles = StyleSheet.create({
     borderBottomColor: '#F3F4F6',
   },
   modalTitle: {
-    fontSize: isSmallDevice ? wp(5) : wp(5.5),
+    fontSize: fontSize.xl,
     fontWeight: '700',
     color: '#1F2937',
   },
-  modalHeaderRight: {
+  modalHeaderActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: wp(3),
@@ -1223,17 +1281,22 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0FDF4',
     borderRadius: wp(2),
   },
-  markAllText: {
+  markAllButtonText: {
     color: '#048E04',
-    fontSize: isSmallDevice ? wp(3.2) : wp(3.5),
+    fontSize: fontSize.xs,
     fontWeight: '600',
   },
-  closeButton: {
+  closeModalButton: {
+    width: wp(8),
+    height: wp(8),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeModalButtonText: {
     fontSize: wp(6),
     color: '#6B7280',
-    fontWeight: '400',
   },
-  notificationList: {
+  notificationsList: {
     paddingHorizontal: wp(5),
     paddingTop: hp(1),
   },
@@ -1244,13 +1307,8 @@ const styles = StyleSheet.create({
     marginBottom: hp(1.5),
     borderWidth: 1,
     borderColor: '#F3F4F6',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
   },
-  unreadDot: {
+  unreadIndicator: {
     width: wp(2),
     height: wp(2),
     borderRadius: wp(1),
@@ -1258,30 +1316,30 @@ const styles = StyleSheet.create({
     marginRight: wp(3),
     marginTop: hp(0.8),
   },
-  notificationContent: {
+  notificationItemContent: {
     flex: 1,
   },
-  notificationTitle: {
-    fontSize: isSmallDevice ? wp(3.8) : wp(4),
+  notificationItemTitle: {
+    fontSize: fontSize.base,
     fontWeight: '700',
-    marginBottom: hp(0.5),
     color: '#1F2937',
+    marginBottom: 4,
   },
-  notificationMessage: {
-    fontSize: isSmallDevice ? wp(3.3) : wp(3.5),
+  notificationItemMessage: {
+    fontSize: fontSize.sm,
     color: '#6B7280',
-    marginBottom: hp(1),
-    lineHeight: wp(5),
+    marginBottom: hp(0.8),
+    lineHeight: 20,
   },
-  notificationTime: {
-    fontSize: isSmallDevice ? wp(2.8) : wp(3),
+  notificationItemTime: {
+    fontSize: fontSize.xs,
     color: '#9CA3AF',
   },
   emptyNotifications: {
     alignItems: 'center',
     paddingVertical: hp(8),
   },
-  emptyNotificationIconContainer: {
+  emptyNotificationsIcon: {
     width: wp(24),
     height: wp(24),
     borderRadius: wp(12),
@@ -1290,19 +1348,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: hp(2),
   },
-  emptyNotificationsIcon: {
+  emptyNotificationsIconText: {
     fontSize: wp(12),
   },
   emptyNotificationsTitle: {
-    fontSize: isSmallDevice ? wp(4.5) : wp(5),
+    fontSize: fontSize.lg,
     fontWeight: '700',
     color: '#1F2937',
     marginBottom: hp(0.8),
   },
   emptyNotificationsText: {
-    fontSize: isSmallDevice ? wp(3.5) : wp(3.8),
+    fontSize: fontSize.sm,
     color: '#9CA3AF',
     textAlign: 'center',
+    paddingHorizontal: wp(8),
   },
 });
 

@@ -10,18 +10,17 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
+  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-
-// Set your backend URL here
-const API_BASE_URL = 'https://hdcpmss-mobilefinal.onrender.com';
+const API_BASE_URL = 'https://hdcpmss-mobilefinal-j60e.onrender.com';
 
 const CustomAlert = ({ visible, type, title, message, onConfirm, onCancel, showCancel = false }) => {
   const [scaleAnim] = useState(new Animated.Value(0));
@@ -156,320 +155,394 @@ const RegisterScreen = () => {
   };
 
   const handleRegister = async () => {
-  if (!validateForm()) {
-    showAlert({
-      type: 'error',
-      title: 'Validation Error',
-      message: 'Please fix the errors in the form before proceeding.',
-    });
-    return;
-  }
-
-  setIsLoading(true);
-  const { username, email, contactNumber, password } = formData;
-
-  try {
-    // 🔹 Step 1: Check if account already exists
-    const checkResponse = await axios.post(
-      `${API_BASE_URL}/api/users/check`,
-      { username: username.trim(), email: email.trim().toLowerCase() },
-      { headers: { 'Content-Type': 'application/json' } }
-    );
-
-    if (checkResponse.data.exists) {
+    if (!validateForm()) {
       showAlert({
-        type: 'warning',
-        title: 'Account Already Registered',
-        message: 'An account with this email or username already exists. Please sign in instead.',
-        onConfirm: hideAlert,
+        type: 'error',
+        title: 'Validation Error',
+        message: 'Please fix the errors in the form before proceeding.',
       });
-      setIsLoading(false);
       return;
     }
 
-    // 🔹 Step 2: Proceed with registration
-    const response = await axios.post(
-      `${API_BASE_URL}/api/users/register`,
-      { username: username.trim(), email: email.trim().toLowerCase(), contactNumber: contactNumber.trim(), password },
-      { timeout: 10000, headers: { 'Content-Type': 'application/json' } }
-    );
+    setIsLoading(true);
+    const { username, email, contactNumber, password } = formData;
 
-    if (response.data.userId) {
-      showAlert({
-        type: 'success',
-        title: 'Registration Successful!',
-        message: 'A verification email has been sent to your email address.',
-        onConfirm: () => {
-          hideAlert();
-          navigation.navigate('Verify', {
-            userId: response.data.userId,
-            email: email.trim().toLowerCase(),
-          });
-        },
-      });
-    } else {
-      throw new Error('Invalid response from server');
+    try {
+      const checkResponse = await axios.post(
+        `${API_BASE_URL}/api/users/check`,
+        { username: username.trim(), email: email.trim().toLowerCase() },
+        { headers: { 'Content-Type': 'application/json' } }
+      );
+
+      if (checkResponse.data.exists) {
+        showAlert({
+          type: 'warning',
+          title: 'Account Already Registered',
+          message: 'An account with this email or username already exists. Please sign in instead.',
+          onConfirm: hideAlert,
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      const response = await axios.post(
+        `${API_BASE_URL}/api/users/register`,
+        { username: username.trim(), email: email.trim().toLowerCase(), contactNumber: contactNumber.trim(), password },
+        { timeout: 10000, headers: { 'Content-Type': 'application/json' } }
+      );
+
+      if (response.data.userId) {
+        showAlert({
+          type: 'success',
+          title: 'Registration Successful!',
+          message: 'A verification email has been sent to your email address.',
+          onConfirm: () => {
+            hideAlert();
+            navigation.navigate('Verify', {
+              userId: response.data.userId,
+              email: email.trim().toLowerCase(),
+            });
+          },
+        });
+      } else {
+        throw new Error('Invalid response from server');
+      }
+    } catch (error) {
+      let errorMessage = 'Registration failed. Please try again.';
+      let errorTitle = 'Registration Failed';
+
+      if (error.response?.data?.message) errorMessage = error.response.data.message;
+      else if (error.response?.status === 409) {
+        errorMessage = 'An account with this username or email already exists.';
+        errorTitle = 'Account Already Exists';
+      } else if (error.code === 'ECONNABORTED') {
+        errorMessage = 'The request took too long. Check your internet connection.';
+        errorTitle = 'Connection Timeout';
+      } else if (!error.response) {
+        errorMessage = 'Unable to connect to the server. Please check your internet connection.';
+        errorTitle = 'Network Error';
+      }
+
+      showAlert({ type: 'error', title: errorTitle, message: errorMessage });
+    } finally {
+      setIsLoading(false);
     }
-  } catch (error) {
-    let errorMessage = 'Registration failed. Please try again.';
-    let errorTitle = 'Registration Failed';
-
-    if (error.response?.data?.message) errorMessage = error.response.data.message;
-    else if (error.response?.status === 409) {
-      errorMessage = 'An account with this username or email already exists.';
-      errorTitle = 'Account Already Exists';
-    } else if (error.code === 'ECONNABORTED') {
-      errorMessage = 'The request took too long. Check your internet connection.';
-      errorTitle = 'Connection Timeout';
-    } else if (!error.response) {
-      errorMessage = 'Unable to connect to the server. Please check your internet connection.';
-      errorTitle = 'Network Error';
-    }
-
-    showAlert({ type: 'error', title: errorTitle, message: errorMessage });
-  } finally {
-    setIsLoading(false);
-  }
-};
-
+  };
 
   const handleLogin = () => navigation.navigate('Login');
 
   return (
-    <KeyboardAvoidingView style={styles.keyboardView} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
-        <View style={styles.container}>
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.logoContainer}>
-              <Image source={require('../assets/halili logo.png')} style={styles.logo} resizeMode="contain" />
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView 
+        style={styles.keyboardView} 
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
+        <ScrollView 
+          contentContainerStyle={styles.scrollContainer}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          bounces={false}
+        >
+          <View style={styles.container}>
+            {/* Compact Header */}
+            <View style={styles.header}>
+              <View style={styles.logoContainer}>
+                <Image 
+                  source={require('../assets/images/newlogohalili.png')} 
+                  style={styles.logo} 
+                  resizeMode="contain" 
+                />
+              </View>
+              <View style={styles.headerTextContainer}>
+                <Text style={styles.clinicName}>Halili Dental Clinic</Text>
+                <Text style={styles.tagline}>Sa Halili Ikaw Mapapangiti</Text>
+              </View>
             </View>
-            <Text style={styles.clinicName}>Halili's Dental Clinic</Text>
-            <Text style={styles.tagline}>Sa Halili Ikaw Mapapangiti</Text>
-          </View>
 
-          {/* Form */}
-          <View style={styles.formContainer}>
-            <InputField label="Username" value={formData.username} onChangeText={v => handleInputChange('username', v)} placeholder="Enter username" error={errors.username} autoCapitalize="none" />
-            <InputField label="Email" value={formData.email} onChangeText={v => handleInputChange('email', v)} placeholder="Enter email" keyboardType="email-address" autoCapitalize="none" error={errors.email} style={styles.fieldSpacing} />
-            <InputField label="Mobile Number" value={formData.contactNumber} onChangeText={v => handleInputChange('contactNumber', v.replace(/[^0-9]/g, ''))} placeholder="Enter mobile number" keyboardType="numeric" error={errors.contactNumber} style={styles.fieldSpacing} maxLength={15} />
-            <InputField label="Password" value={formData.password} onChangeText={v => handleInputChange('password', v)} placeholder="Enter password" secureTextEntry={!showPassword} error={errors.password} style={styles.fieldSpacing} rightIcon={<TouchableOpacity onPress={() => setShowPassword(!showPassword)}><Ionicons name={showPassword ? 'eye-off' : 'eye'} size={20} color="#666" /></TouchableOpacity>} />
-            <InputField label="Confirm Password" value={formData.confirmPassword} onChangeText={v => handleInputChange('confirmPassword', v)} placeholder="Confirm password" secureTextEntry={!showConfirmPassword} error={errors.confirmPassword} style={styles.fieldSpacing} rightIcon={<TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}><Ionicons name={showConfirmPassword ? 'eye-off' : 'eye'} size={20} color="#666" /></TouchableOpacity>} />
+            {/* Title */}
+            <View style={styles.titleContainer}>
+              <Text style={styles.title}>Create Account</Text>
+              <Text style={styles.subtitle}>Fill in your details to get started</Text>
+            </View>
 
-            <ActionButton title={isLoading ? 'Creating Account...' : 'Register'} onPress={handleRegister} variant="primary" style={styles.registerButton} disabled={isLoading} loading={isLoading} />
+            {/* Compact Form */}
+            <View style={styles.formContainer}>
+              <InputField 
+                label="Username" 
+                value={formData.username} 
+                onChangeText={v => handleInputChange('username', v)} 
+                placeholder="Enter username" 
+                error={errors.username} 
+                autoCapitalize="none"
+                leftIcon={<Ionicons name="person-outline" size={18} color="#666" />}
+              />
+              
+              <InputField 
+                label="Email" 
+                value={formData.email} 
+                onChangeText={v => handleInputChange('email', v)} 
+                placeholder="Enter email" 
+                keyboardType="email-address" 
+                autoCapitalize="none" 
+                error={errors.email}
+                leftIcon={<Ionicons name="mail-outline" size={18} color="#666" />}
+              />
+              
+              <InputField 
+                label="Mobile Number" 
+                value={formData.contactNumber} 
+                onChangeText={v => handleInputChange('contactNumber', v.replace(/[^0-9]/g, ''))} 
+                placeholder="Enter mobile number" 
+                keyboardType="numeric" 
+                error={errors.contactNumber}
+                maxLength={15}
+                leftIcon={<Ionicons name="call-outline" size={18} color="#666" />}
+              />
+              
+              <InputField 
+                label="Password" 
+                value={formData.password} 
+                onChangeText={v => handleInputChange('password', v)} 
+                placeholder="Enter password" 
+                secureTextEntry={!showPassword} 
+                error={errors.password}
+                leftIcon={<Ionicons name="lock-closed-outline" size={18} color="#666" />}
+                rightIcon={
+                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                    <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={18} color="#666" />
+                  </TouchableOpacity>
+                }
+              />
+              
+              <InputField 
+                label="Confirm Password" 
+                value={formData.confirmPassword} 
+                onChangeText={v => handleInputChange('confirmPassword', v)} 
+                placeholder="Confirm password" 
+                secureTextEntry={!showConfirmPassword} 
+                error={errors.confirmPassword}
+                leftIcon={<Ionicons name="lock-closed-outline" size={18} color="#666" />}
+                rightIcon={
+                  <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+                    <Ionicons name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'} size={18} color="#666" />
+                  </TouchableOpacity>
+                }
+              />
 
-            <View style={styles.loginSection}>
-              <Text style={styles.loginPrompt}>Already have an account?</Text>
-              <TouchableOpacity onPress={handleLogin} disabled={isLoading}><Text style={styles.loginButtonText}>Sign In</Text></TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.registerButton, isLoading && styles.buttonDisabled]}
+                onPress={handleRegister}
+                activeOpacity={0.8}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.registerButtonText}>Create Account</Text>
+                )}
+              </TouchableOpacity>
+
+              <View style={styles.loginSection}>
+                <Text style={styles.loginPrompt}>Already have an account? </Text>
+                <TouchableOpacity onPress={handleLogin} disabled={isLoading}>
+                  <Text style={styles.loginButtonText}>Sign In</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
-      <CustomAlert visible={alertConfig.visible} type={alertConfig.type} title={alertConfig.title} message={alertConfig.message} onConfirm={alertConfig.onConfirm} onCancel={alertConfig.onCancel} showCancel={alertConfig.showCancel} />
-    </KeyboardAvoidingView>
+      <CustomAlert 
+        visible={alertConfig.visible} 
+        type={alertConfig.type} 
+        title={alertConfig.title} 
+        message={alertConfig.message} 
+        onConfirm={alertConfig.onConfirm} 
+        onCancel={alertConfig.onCancel} 
+        showCancel={alertConfig.showCancel} 
+      />
+    </SafeAreaView>
   );
 };
 
-// Enhanced InputField Component
 const InputField = ({
   label,
   value,
   onChangeText,
   placeholder,
   secureTextEntry = false,
-  style,
   keyboardType,
   autoCapitalize,
-  autoCorrect,
   error,
+  leftIcon,
   rightIcon,
   maxLength,
 }) => (
-  <View style={[styles.inputWrapper, style]}>
+  <View style={styles.inputWrapper}>
     <Text style={styles.label}>{label}</Text>
     <View style={[styles.inputContainer, error && styles.inputError]}>
+      {leftIcon && <View style={styles.leftIconContainer}>{leftIcon}</View>}
       <TextInput
-        style={[styles.input, rightIcon && styles.inputWithIcon]}
+        style={[styles.input, leftIcon && styles.inputWithLeftIcon]}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor="rgba(0, 0, 0, 0.4)"
+        placeholderTextColor="#999"
         secureTextEntry={secureTextEntry}
         keyboardType={keyboardType}
         autoCapitalize={autoCapitalize}
-        autoCorrect={autoCorrect}
         maxLength={maxLength}
       />
-      {rightIcon}
+      {rightIcon && <View style={styles.rightIconContainer}>{rightIcon}</View>}
     </View>
     {error ? <Text style={styles.errorText}>{error}</Text> : null}
   </View>
 );
 
-// Enhanced ActionButton Component
-const ActionButton = ({
-  title,
-  onPress,
-  style,
-  textStyle,
-  variant = 'primary',
-  disabled = false,
-  loading = false,
-}) => {
-  const buttonStyle = [
-    variant === 'primary' ? styles.primaryButton : styles.secondaryButton,
-    disabled && styles.buttonDisabled,
-    style,
-  ];
-  const buttonTextStyle = [
-    variant === 'primary' ? styles.primaryButtonText : styles.secondaryButtonText,
-    disabled && styles.buttonTextDisabled,
-    textStyle,
-  ];
-
-  return (
-    <TouchableOpacity
-      style={buttonStyle}
-      onPress={onPress}
-      activeOpacity={disabled ? 1 : 0.7}
-      disabled={disabled}
-    >
-      {loading ? (
-        <ActivityIndicator size="small" color="#fff" />
-      ) : (
-        <Text style={buttonTextStyle}>{title}</Text>
-      )}
-    </TouchableOpacity>
-  );
-};
-
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#f5f7fa',
+  },
   keyboardView: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
   },
   scrollContainer: {
     flexGrow: 1,
-    paddingBottom: 20,
+    paddingBottom: 24,
   },
   container: {
-    marginLeft: 'auto',
-    marginRight: 'auto',
-    maxWidth: 480,
-    width: '100%',
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    flex: 1,
     paddingHorizontal: 20,
-    alignItems: 'stretch',
+    paddingTop: Platform.OS === 'ios' ? 12 : 24,
+    maxWidth: 480,
+    alignSelf: 'center',
+    width: '100%',
   },
   header: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 20,
+    paddingVertical: 12,
   },
   logoContainer: {
     backgroundColor: '#fff',
-    borderRadius: 50,
-    padding: 10,
+    borderRadius: 12,
+    padding: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
   },
   logo: {
-    width: 80,
-    height: 80,
+    width: 48,
+    height: 48,
+  },
+  headerTextContainer: {
+    marginLeft: 12,
+    flex: 1,
   },
   clinicName: {
-    fontSize: 28,
-    fontWeight: '800',
-    marginTop: 16,
+    fontSize: 18,
+    fontWeight: '700',
     color: '#1a1a1a',
     fontFamily: 'Nunito',
-    textAlign: 'center',
   },
   tagline: {
-    fontSize: 14,
-    fontWeight: '400',
-    marginTop: 4,
+    fontSize: 12,
     color: '#666',
     fontFamily: 'Nunito',
-    textAlign: 'center',
+    marginTop: 2,
+  },
+  titleContainer: {
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#1a1a1a',
+    fontFamily: 'Nunito',
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#666',
+    fontFamily: 'Nunito',
   },
   formContainer: {
     backgroundColor: '#fff',
     borderRadius: 16,
-    padding: 24,
+    padding: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
   },
   inputWrapper: {
-    width: '100%',
-    marginBottom: 4,
+    marginBottom: 16,
   },
   label: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#1a1a1a',
     fontFamily: 'Nunito',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   inputContainer: {
-    borderRadius: 12,
-    borderColor: '#e1e5e9',
-    borderWidth: 1.5,
-    paddingHorizontal: 16,
-    paddingVertical: Platform.OS === 'ios' ? 16 : 12,
-    backgroundColor: '#fff',
     flexDirection: 'row',
     alignItems: 'center',
+    borderRadius: 10,
+    borderColor: '#e1e5e9',
+    borderWidth: 1.5,
+    backgroundColor: '#fafbfc',
+    paddingHorizontal: 12,
+    height: 48,
   },
   inputError: {
-    borderColor: '#ff4757',
-    backgroundColor: '#fff5f5',
+    borderColor: '#EF4444',
+    backgroundColor: '#FEF2F2',
+  },
+  leftIconContainer: {
+    marginRight: 10,
+  },
+  rightIconContainer: {
+    marginLeft: 10,
   },
   input: {
     flex: 1,
-    fontSize: 16,
-    fontWeight: '400',
+    fontSize: 15,
     color: '#1a1a1a',
     fontFamily: 'Nunito',
     paddingVertical: 0,
   },
-  inputWithIcon: {
-    paddingRight: 8,
-  },
-  eyeIcon: {
-    padding: 4,
+  inputWithLeftIcon: {
+    marginLeft: 0,
   },
   errorText: {
     fontSize: 12,
-    color: '#ff4757',
+    color: '#EF4444',
     fontFamily: 'Nunito',
     marginTop: 4,
     marginLeft: 4,
   },
-  fieldSpacing: {
-    marginTop: 16,
-  },
-  primaryButton: {
+  registerButton: {
     backgroundColor: '#048E04',
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
+    borderRadius: 10,
+    paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 24,
+    marginTop: 8,
     shadowColor: '#048E04',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
   },
-  primaryButtonText: {
+  registerButtonText: {
     fontSize: 16,
     fontWeight: '700',
     color: '#fff',
@@ -480,31 +553,24 @@ const styles = StyleSheet.create({
     shadowOpacity: 0,
     elevation: 0,
   },
-  buttonTextDisabled: {
-    color: '#999',
-  },
   loginSection: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 24,
+    justifyContent: 'center',
+    marginTop: 20,
   },
   loginPrompt: {
     fontSize: 14,
-    fontWeight: '400',
     color: '#666',
     fontFamily: 'Nunito',
-    marginBottom: 8,
-  },
-  loginButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
   },
   loginButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
     color: '#048E04',
     fontFamily: 'Nunito',
   },
-  // Custom Alert Modal Styles
+  // Alert Modal Styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',

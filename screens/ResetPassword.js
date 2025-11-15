@@ -16,7 +16,7 @@ import {
   View,
 } from "react-native";
 
-const BASE_URL = "https://hdcpmss-mobilefinal.onrender.com";
+const BASE_URL = "https://hdcpmss-mobilefinal-j60e.onrender.com";
 
 const ResetPassword = () => {
   const navigation = useNavigation();

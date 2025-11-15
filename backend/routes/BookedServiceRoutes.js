@@ -78,6 +78,11 @@ router.put("/:id", async (req, res) => {
       updates.status = "rescheduled";
     }
 
+    // If cancelling, ensure cancellationReason is provided
+    if (updates.status === "cancelled" && !updates.cancellationReason) {
+      return res.status(400).json({ error: "Cancellation reason is required" });
+    }
+
     const updatedBooking = await BookedService.findByIdAndUpdate(id, updates, {
       new: true,
     });
@@ -89,5 +94,21 @@ router.put("/:id", async (req, res) => {
   }
 });
 
+// ✅ Delete a booking (optional - for hard delete)
+router.delete("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deletedBooking = await BookedService.findByIdAndDelete(id);
+    
+    if (!deletedBooking) {
+      return res.status(404).json({ error: "Booking not found" });
+    }
+
+    res.status(200).json({ message: "Booking deleted successfully", deletedBooking });
+  } catch (error) {
+    console.error("Error deleting booking:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
 
 module.exports = router;

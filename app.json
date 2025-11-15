@@ -17,7 +17,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/images/logodental.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
@@ -28,7 +28,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "29a5021d-8894-424a-832f-6c6e49859f9b"
+        "projectId": "35f69677-733b-45b5-91b6-3d42c9a4f62d"
       }
     }
   }

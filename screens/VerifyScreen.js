@@ -24,7 +24,7 @@ const VerifyScreen = () => {
   }
 
   try {
-    const res = await axios.post('https://hdcpmss-mobilefinal.onrender.com/api/users/verify', {
+    const res = await axios.post('https://hdcpmss-mobilefinal-j60e.onrender.com/api/users/verify', {
       userId,
       code,
     });

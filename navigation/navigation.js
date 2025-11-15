@@ -14,6 +14,7 @@ import BookAppointmentScreen from '../screens/BookAppointmentScreen';
 import FeedbackScreen from '../screens/Feedback';
 import ForgotPassword from '../screens/ForgotPassword';
 import HistoryScreen from '../screens/HistoryScreen';
+import IntroScreen from '../screens/IntroScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import ResetPassword from '../screens/ResetPassword';
 import ServicesScreen from '../screens/ServicesScreen';
@@ -24,11 +25,12 @@ export default function Navigation() {
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName="Register"
+        initialRouteName="IntroScreen"
         screenOptions={{ headerShown: false }}
       >
-    
+
         <Stack.Screen name="Register" component={RegScreen} />
+        <Stack.Screen name="IntroScreen" component={IntroScreen} />
         <Stack.Screen name="Login" component={LogInScreen} />
         <Stack.Screen name="HomeScreen" component={HomeScreen} />
         <Stack.Screen name="About" component={AboutScreen} />

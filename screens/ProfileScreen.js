@@ -23,7 +23,7 @@ const wp = (percentage) => (screenWidth * percentage) / 100;
 const hp = (percentage) => (screenHeight * percentage) / 100;
 const isSmallDevice = screenWidth < 375;
 
-const BASE_URL = 'https://hdcpmss-mobilefinal.onrender.com';
+const BASE_URL = 'https://hdcpmss-mobilefinal-j60e.onrender.com';
 
 const ProfileScreen = () => {
   const navigation = useNavigation();
