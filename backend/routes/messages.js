@@ -1,8 +1,25 @@
-// routes/messages.js
 const express = require('express');
 const router = express.Router();
 const Message = require('../models/Message');
-const { authenticateToken } = require('../middleware/auth');
+const jwt = require('jsonwebtoken');
+
+const JWT_SECRET = process.env.JWT_SECRET;
+
+// -----------------------------
+// AUTH MIDDLEWARE (from UserRoutes)
+// -----------------------------
+const authMiddleware = (req, res, next) => {
+  const token = req.headers["authorization"]?.split(" ")[1];
+  if (!token) return res.status(401).json({ error: "No token, authorization denied" });
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: "Invalid token" });
+  }
+};
 
 // Message Model Schema (models/Message.js)
 /*
@@ -49,7 +66,7 @@ module.exports = mongoose.model('Message', messageSchema);
 */
 
 // GET /api/messages/:userId - Get all messages for a user
-router.get('/:userId', authenticateToken, async (req, res) => {
+router.get('/:userId', authMiddleware, async (req, res) => {
   try {
     const { userId } = req.params;
 
@@ -77,7 +94,7 @@ router.get('/:userId', authenticateToken, async (req, res) => {
 });
 
 // POST /api/messages - Send a new message
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', authMiddleware, async (req, res) => {
   try {
     const { userId, userEmail, username, message, sender } = req.body;
 
@@ -146,7 +163,7 @@ router.post('/', authenticateToken, async (req, res) => {
 });
 
 // PUT /api/messages/:userId/mark-read - Mark all messages as read for a user
-router.put('/:userId/mark-read', authenticateToken, async (req, res) => {
+router.put('/:userId/mark-read', authMiddleware, async (req, res) => {
   try {
     const { userId } = req.params;
 
@@ -185,7 +202,7 @@ router.put('/:userId/mark-read', authenticateToken, async (req, res) => {
 });
 
 // GET /api/messages/:userId/unread-count - Get unread message count
-router.get('/:userId/unread-count', authenticateToken, async (req, res) => {
+router.get('/:userId/unread-count', authMiddleware, async (req, res) => {
   try {
     const { userId } = req.params;
 
@@ -217,7 +234,7 @@ router.get('/:userId/unread-count', authenticateToken, async (req, res) => {
 });
 
 // DELETE /api/messages/:messageId - Delete a message (admin only)
-router.delete('/:messageId', authenticateToken, async (req, res) => {
+router.delete('/:messageId', authMiddleware, async (req, res) => {
   try {
     // Only admins can delete messages
     if (req.user.role !== 'admin') {
@@ -253,7 +270,7 @@ router.delete('/:messageId', authenticateToken, async (req, res) => {
 });
 
 // GET /api/messages/admin/all - Get all conversations (admin only)
-router.get('/admin/all', authenticateToken, async (req, res) => {
+router.get('/admin/all', authMiddleware, async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ 
