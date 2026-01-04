@@ -38,4 +38,5 @@ const messageSchema = new mongoose.Schema({
 messageSchema.index({ userId: 1, createdAt: -1 });
 messageSchema.index({ userId: 1, isRead: 1 });
 
-module.exports = mongoose.model('Message', messageSchema);
+// Export with custom collection name "Messages" (capital M)
+module.exports = mongoose.model('Message', messageSchema, 'Messages');
