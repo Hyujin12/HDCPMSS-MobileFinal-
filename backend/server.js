@@ -10,7 +10,7 @@ const cors = require("cors");
 const userRoutes = require("./routes/UserRoutes");
 const bookedServiceRoutes = require("./routes/BookedServiceRoutes");
 const feedbackRoutes = require("./routes/feedback");
-
+const messageRoutes = require('./routes/messages');
 // Initialize Express app
 const app = express();
 
@@ -22,6 +22,7 @@ app.use(express.json()); // Parse JSON bodies
 app.use("/api/users", userRoutes);
 app.use("/api/booked-services", bookedServiceRoutes);
 app.use("/api/feedback", feedbackRoutes);
+app.use('/api/messages', messageRoutes);
 
 // Root route for testing
 app.get("/", (req, res) => {

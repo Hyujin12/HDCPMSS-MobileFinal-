@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
 import * as Notifications from 'expo-notifications';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -27,7 +27,6 @@ const wp = (percentage) => (screenWidth * percentage) / 100;
 const hp = (percentage) => (screenHeight * percentage) / 100;
 const isSmallDevice = screenWidth < 375;
 const isMediumDevice = screenWidth >= 375 && screenWidth < 414;
-const isLargeDevice = screenWidth >= 414;
 
 // Responsive font sizing
 const fontSize = {
@@ -62,14 +61,23 @@ const HomeScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ total: 0, pending: 0, accepted: 0, completed: 0 });
   const [username, setUsername] = useState('');
+  const [userInfo, setUserInfo] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [todayAppointments, setTodayAppointments] = useState([]);
+  const chatPollingInterval = useRef(null);
 
   useEffect(() => {
     checkTokenAndFetch();
+    
+    return () => {
+      if (chatPollingInterval.current) {
+        clearInterval(chatPollingInterval.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -87,15 +95,16 @@ const HomeScreen = ({ navigation }) => {
       const refreshData = async () => {
         try {
           const token = await AsyncStorage.getItem('token');
-          if (token) {
+          if (token && userInfo) {
             await fetchAppointments(token);
+            await fetchUnreadChatCount(token, userInfo.userId);
           }
         } catch (err) {
           console.error('❌ Error refreshing data:', err);
         }
       };
       refreshData();
-    }, [])
+    }, [userInfo])
   );
 
   const checkTokenAndFetch = async () => {
@@ -123,6 +132,30 @@ const HomeScreen = ({ navigation }) => {
     if (status !== 'granted') {
       Alert.alert('Permission required', 'Enable notifications to receive appointment reminders');
     }
+  };
+
+  const fetchUnreadChatCount = async (token, userId) => {
+    try {
+      const response = await axios.get(`${BASE_URL}/api/messages/${userId}/unread-count`, {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 5000,
+      });
+      setUnreadChatCount(response.data.unreadCount || 0);
+    } catch (err) {
+      console.error('❌ Error fetching unread chat count:', err);
+    }
+  };
+
+  const startChatPolling = (token, userId) => {
+    // Clear any existing interval
+    if (chatPollingInterval.current) {
+      clearInterval(chatPollingInterval.current);
+    }
+
+    // Poll every 5 seconds for unread messages
+    chatPollingInterval.current = setInterval(() => {
+      fetchUnreadChatCount(token, userId);
+    }, 5000);
   };
 
   const generateNotifications = (appointments) => {
@@ -212,11 +245,24 @@ const HomeScreen = ({ navigation }) => {
       
       console.log('✅ Profile response:', resProfile.data);
       const userId = resProfile.data._id || resProfile.data.id;
-      setUsername(resProfile.data.username || 'User');
+      const userData = {
+        userId,
+        username: resProfile.data.username || 'User',
+        email: resProfile.data.email,
+      };
+      
+      setUsername(userData.username);
+      setUserInfo(userData);
 
       if (!userId) {
         throw new Error('User ID not found in profile');
       }
+
+      // Fetch unread chat count
+      await fetchUnreadChatCount(token, userId);
+      
+      // Start polling for chat updates
+      startChatPolling(token, userId);
 
       const resAppointments = await axios.get(`${BASE_URL}/api/booked-services`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -396,6 +442,21 @@ const HomeScreen = ({ navigation }) => {
                 
                 <View style={styles.headerActions}>
                   <TouchableOpacity 
+                    style={styles.chatButton}
+                    onPress={() => navigation.navigate('Chat')}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.chatIcon}>💬</Text>
+                    {unreadChatCount > 0 && (
+                      <View style={styles.chatBadge}>
+                        <Text style={styles.chatBadgeText}>
+                          {unreadChatCount > 9 ? '9+' : unreadChatCount}
+                        </Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
                     style={styles.notificationButton}
                     onPress={() => setShowNotifications(true)}
                     activeOpacity={0.7}
@@ -521,6 +582,30 @@ const HomeScreen = ({ navigation }) => {
                   <Text style={styles.actionDescription}>View all bookings</Text>
                 </TouchableOpacity>
               </View>
+
+              {/* Chat Action Card */}
+              <TouchableOpacity 
+                style={styles.chatActionCard}
+                onPress={() => navigation.navigate('Chat')}
+                activeOpacity={0.8}
+              >
+                <View style={styles.chatActionLeft}>
+                  <View style={styles.chatActionIconCircle}>
+                    <Text style={styles.chatActionIcon}>💬</Text>
+                  </View>
+                  <View style={styles.chatActionTextContainer}>
+                    <Text style={styles.chatActionTitle}>Chat with Us</Text>
+                    <Text style={styles.chatActionDescription}>
+                      {unreadChatCount > 0 
+                        ? `${unreadChatCount} new message${unreadChatCount > 1 ? 's' : ''}`
+                        : 'Get instant support'}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.chatActionArrow}>
+                  <Text style={styles.chatActionArrowText}>→</Text>
+                </View>
+              </TouchableOpacity>
             </View>
 
             {/* Upcoming Appointments */}
@@ -811,7 +896,38 @@ const styles = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: wp(3),
+    gap: wp(2),
+  },
+  chatButton: {
+    width: wp(11),
+    height: wp(11),
+    borderRadius: wp(5.5),
+    backgroundColor: '#F0FDF4',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  chatIcon: {
+    fontSize: wp(5.5),
+  },
+  chatBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: '#048E04',
+    borderRadius: wp(2.5),
+    minWidth: wp(5),
+    height: wp(5),
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: wp(1),
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  chatBadgeText: {
+    color: '#fff',
+    fontSize: fontSize.xs,
+    fontWeight: '700',
   },
   notificationButton: {
     width: wp(11),
@@ -940,7 +1056,7 @@ const styles = StyleSheet.create({
     gap: wp(2.5),
   },
   statCard: {
-    flex: 4,
+    flex: 1,
     backgroundColor: '#fff',
     borderRadius: wp(3.5),
     paddingVertical: hp(2),
@@ -1026,6 +1142,7 @@ const styles = StyleSheet.create({
   quickActions: {
     flexDirection: 'row',
     gap: wp(3),
+    marginBottom: hp(2),
   },
   actionCard: {
     flex: 1,
@@ -1076,6 +1193,73 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     color: '#6B7280',
     textAlign: 'center',
+  },
+
+  // Chat Action Card
+  chatActionCard: {
+    backgroundColor: '#fff',
+    borderRadius: wp(4),
+    padding: wp(4),
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#D1FAE5',
+    backgroundColor: '#F0FDF4',
+  },
+  chatActionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  chatActionIconCircle: {
+    width: wp(14),
+    height: wp(14),
+    borderRadius: wp(7),
+    backgroundColor: '#ECFDF5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: wp(3),
+    shadowColor: '#048E04',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  chatActionIcon: {
+    fontSize: wp(7),
+  },
+  chatActionTextContainer: {
+    flex: 1,
+  },
+  chatActionTitle: {
+    fontSize: fontSize.lg,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 2,
+  },
+  chatActionDescription: {
+    fontSize: fontSize.sm,
+    color: '#048E04',
+    fontWeight: '600',
+  },
+  chatActionArrow: {
+    width: wp(10),
+    height: wp(10),
+    borderRadius: wp(5),
+    backgroundColor: '#048E04',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  chatActionArrowText: {
+    fontSize: wp(5),
+    color: '#fff',
+    fontWeight: '700',
   },
 
   // Appointment Card
