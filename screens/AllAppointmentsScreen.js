@@ -28,13 +28,13 @@ const hp = (percentage) => (screenHeight * percentage) / 100;
 const isSmallDevice = screenWidth < 375;
 
 const DENTIST_HOURS = {
-  0: { start: 8, end: 12 },   // Sunday 8 AM - 12 PM
-  1: { start: 8, end: 19 },   // Monday 8 AM - 7 PM
-  2: { start: 8, end: 19 },   // Tuesday 8 AM - 7 PM
-  3: { start: 8, end: 19 },   // Wednesday 8 AM - 7 PM
-  4: { start: 8, end: 19 },   // Thursday 8 AM - 7 PM
-  5: { start: 8, end: 17 },   // Friday 8 AM - 5 PM
-  6: { start: 8, end: 19 },   // Saturday 8 AM - 7 PM
+  0: { start: 8, end: 12 }, // Sunday 8 AM - 12 PM
+  1: { start: 8, end: 19 }, // Monday 8 AM - 7 PM
+  2: { start: 8, end: 19 }, // Tuesday 8 AM - 7 PM
+  3: { start: 8, end: 19 }, // Wednesday 8 AM - 7 PM
+  4: { start: 8, end: 19 }, // Thursday 8 AM - 7 PM
+  5: { start: 8, end: 17 }, // Friday 8 AM - 5 PM
+  6: { start: 8, end: 19 }, // Saturday 8 AM - 7 PM
 };
 
 export default function AllAppointmentsScreen() {
@@ -82,31 +82,69 @@ export default function AllAppointmentsScreen() {
         return;
       }
 
+      console.log("🔹 Fetching user profile...");
       const userRes = await axios.get(USER_URL, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
+      console.log("✅ Profile response:", userRes.data);
       const loggedInUserId = userRes.data._id || userRes.data.id;
+      const userEmail = userRes.data.email;
+
       setUserId(loggedInUserId);
 
       if (!loggedInUserId) {
         throw new Error("User ID not found");
       }
 
+      console.log("🔹 User info:", {
+        userId: loggedInUserId,
+        email: userEmail,
+      });
+
+      console.log("🔹 Fetching all bookings...");
       const bookingsRes = await axios.get(API_URL, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
+      console.log("✅ All bookings fetched:", bookingsRes.data?.length || 0);
       const allBookings = bookingsRes.data || [];
+
+      // Log sample booking structure for debugging
+      if (allBookings.length > 0) {
+        console.log("📋 Sample booking structure:", {
+          id: allBookings[0]._id,
+          userId: allBookings[0].userId,
+          email: allBookings[0].email,
+          serviceName: allBookings[0].serviceName,
+          status: allBookings[0].status,
+        });
+      }
+
+      // Filter by email OR userId (for backward compatibility)
       const userBookings = allBookings.filter((booking) => {
-        return (
+        const matchEmail = booking.email === userEmail;
+        const matchUserId =
           booking.userId === loggedInUserId ||
           booking.user === loggedInUserId ||
           booking.user?._id === loggedInUserId ||
           booking.createdBy === loggedInUserId ||
-          booking.patientId === loggedInUserId
-        );
+          booking.patientId === loggedInUserId;
+
+        if (matchEmail || matchUserId) {
+          console.log(
+            "✅ Matched booking:",
+            booking._id,
+            "- Service:",
+            booking.serviceName,
+          );
+        }
+
+        return matchEmail || matchUserId;
       });
+
+      console.log(`📊 Total bookings: ${allBookings.length}`);
+      console.log(`📋 User bookings: ${userBookings.length}`);
 
       const sortedBookings = userBookings.sort((a, b) => {
         return new Date(b.date) - new Date(a.date);
@@ -114,8 +152,14 @@ export default function AllAppointmentsScreen() {
 
       setBookings(sortedBookings);
     } catch (error) {
-      console.error("Error fetching data:", error);
-      Alert.alert("Error", "Could not fetch appointments. Please try again.");
+      console.error("❌ Error fetching data:", error);
+      console.error("❌ Error response:", error.response?.data);
+      console.error("❌ Error status:", error.response?.status);
+      Alert.alert(
+        "Error",
+        error.response?.data?.error ||
+          "Could not fetch appointments. Please try again.",
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -143,17 +187,47 @@ export default function AllAppointmentsScreen() {
     const statusLower = status?.toLowerCase() || "";
     switch (statusLower) {
       case "accepted":
-        return { color: "#10B981", bgColor: "#D1FAE5", label: "Accepted", icon: "✓" };
+        return {
+          color: "#10B981",
+          bgColor: "#D1FAE5",
+          label: "Accepted",
+          icon: "✓",
+        };
       case "pending":
-        return { color: "#F59E0B", bgColor: "#FEF3C7", label: "Pending", icon: "⏱" };
+        return {
+          color: "#F59E0B",
+          bgColor: "#FEF3C7",
+          label: "Pending",
+          icon: "⏱",
+        };
       case "completed":
-        return { color: "#3B82F6", bgColor: "#DBEAFE", label: "Completed", icon: "✓✓" };
+        return {
+          color: "#3B82F6",
+          bgColor: "#DBEAFE",
+          label: "Completed",
+          icon: "✓✓",
+        };
       case "cancelled":
-        return { color: "#EF4444", bgColor: "#FEE2E2", label: "Cancelled", icon: "✕" };
+        return {
+          color: "#EF4444",
+          bgColor: "#FEE2E2",
+          label: "Cancelled",
+          icon: "✕",
+        };
       case "rescheduled":
-        return { color: "#8B5CF6", bgColor: "#EDE9FE", label: "Rescheduled", icon: "↻" };
+        return {
+          color: "#8B5CF6",
+          bgColor: "#EDE9FE",
+          label: "Rescheduled",
+          icon: "↻",
+        };
       default:
-        return { color: "#6B7280", bgColor: "#F3F4F6", label: status || "Unknown", icon: "?" };
+        return {
+          color: "#6B7280",
+          bgColor: "#F3F4F6",
+          label: status || "Unknown",
+          icon: "?",
+        };
     }
   };
 
@@ -196,7 +270,7 @@ export default function AllAppointmentsScreen() {
         const dayHours = DENTIST_HOURS[dayOfWeek];
         Alert.alert(
           "Outside Clinic Hours",
-          `Selected time is outside of clinic hours for ${selectedDate}. Please choose a time between ${dayHours.start}:00 and ${dayHours.end}:00.`
+          `Selected time is outside of clinic hours for ${selectedDate}. Please choose a time between ${dayHours.start}:00 and ${dayHours.end}:00.`,
         );
         return;
       }
@@ -209,32 +283,28 @@ export default function AllAppointmentsScreen() {
       const minutesStr = minutes < 10 ? "0" + minutes : minutes;
       const timeString = `${hours}:${minutesStr} ${ampm}`;
 
-      const updateData = { 
-        date: selectedDate, 
-        time: timeString, 
-        phone, 
-        description 
+      const updateData = {
+        date: selectedDate,
+        time: timeString,
+        phone,
+        description,
       };
 
       if (selectedBooking.status === "cancelled") {
         updateData.status = "rescheduled";
       }
 
-      await axios.put(
-        `${API_URL}/${selectedBooking._id}`,
-        updateData,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await axios.put(`${API_URL}/${selectedBooking._id}`, updateData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       Alert.alert("✅ Success", "Appointment updated successfully!");
       setEditModalVisible(false);
 
       setBookings((prev) =>
         prev.map((b) =>
-          b._id === selectedBooking._id
-            ? { ...b, ...updateData }
-            : b
-        )
+          b._id === selectedBooking._id ? { ...b, ...updateData } : b,
+        ),
       );
     } catch (error) {
       console.error("Error updating booking:", error);
@@ -259,28 +329,29 @@ export default function AllAppointmentsScreen() {
       const token = await AsyncStorage.getItem("token");
       if (!token) return Alert.alert("Unauthorized", "Please log in again.");
 
-      const reason = selectedCancelReason === "Other" 
-        ? cancellationReason 
-        : selectedCancelReason;
+      const reason =
+        selectedCancelReason === "Other"
+          ? cancellationReason
+          : selectedCancelReason;
 
       await axios.put(
         `${API_URL}/${selectedBooking._id}`,
-        { 
+        {
           status: "cancelled",
-          cancellationReason: reason 
+          cancellationReason: reason,
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
 
       Alert.alert("✅ Cancelled", "Your appointment has been cancelled.");
       setCancelModalVisible(false);
-      
+
       setBookings((prev) =>
-        prev.map((b) => 
-          b._id === selectedBooking._id 
-            ? { ...b, status: "cancelled", cancellationReason: reason } 
-            : b
-        )
+        prev.map((b) =>
+          b._id === selectedBooking._id
+            ? { ...b, status: "cancelled", cancellationReason: reason }
+            : b,
+        ),
       );
     } catch (error) {
       console.error("Error cancelling booking:", error);
@@ -300,10 +371,14 @@ export default function AllAppointmentsScreen() {
   const getStatusCounts = () => {
     return {
       all: bookings.length,
-      pending: bookings.filter(b => b.status?.toLowerCase() === "pending").length,
-      accepted: bookings.filter(b => b.status?.toLowerCase() === "accepted").length,
-      completed: bookings.filter(b => b.status?.toLowerCase() === "completed").length,
-      cancelled: bookings.filter(b => b.status?.toLowerCase() === "cancelled").length,
+      pending: bookings.filter((b) => b.status?.toLowerCase() === "pending")
+        .length,
+      accepted: bookings.filter((b) => b.status?.toLowerCase() === "accepted")
+        .length,
+      completed: bookings.filter((b) => b.status?.toLowerCase() === "completed")
+        .length,
+      cancelled: bookings.filter((b) => b.status?.toLowerCase() === "cancelled")
+        .length,
     };
   };
 
@@ -338,7 +413,8 @@ export default function AllAppointmentsScreen() {
               <View style={styles.headerTextWrapper}>
                 <Text style={styles.headerTitle}>My Appointments</Text>
                 <Text style={styles.headerCount}>
-                  {bookings.length} {bookings.length === 1 ? "Appointment" : "Total Appointments"}
+                  {bookings.length}{" "}
+                  {bookings.length === 1 ? "Appointment" : "Total Appointments"}
                 </Text>
               </View>
             </View>
@@ -355,7 +431,9 @@ export default function AllAppointmentsScreen() {
                   <Text style={styles.statLabel}>Accepted</Text>
                 </View>
                 <View style={styles.statCard}>
-                  <Text style={styles.statNumber}>{statusCounts.completed}</Text>
+                  <Text style={styles.statNumber}>
+                    {statusCounts.completed}
+                  </Text>
                   <Text style={styles.statLabel}>Completed</Text>
                 </View>
               </View>
@@ -371,39 +449,46 @@ export default function AllAppointmentsScreen() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.filterScroll}
             >
-              {["all", "pending", "accepted", "completed", "cancelled"].map((status) => (
-                <TouchableOpacity
-                  key={status}
-                  style={[
-                    styles.filterPill,
-                    filterStatus === status && styles.filterPillActive,
-                  ]}
-                  onPress={() => setFilterStatus(status)}
-                  activeOpacity={0.7}
-                >
-                  <Text
+              {["all", "pending", "accepted", "completed", "cancelled"].map(
+                (status) => (
+                  <TouchableOpacity
+                    key={status}
                     style={[
-                      styles.filterPillText,
-                      filterStatus === status && styles.filterPillTextActive,
+                      styles.filterPill,
+                      filterStatus === status && styles.filterPillActive,
                     ]}
+                    onPress={() => setFilterStatus(status)}
+                    activeOpacity={0.7}
                   >
-                    {status.charAt(0).toUpperCase() + status.slice(1)}
-                  </Text>
-                  {statusCounts[status] > 0 && (
-                    <View style={[
-                      styles.filterBadge,
-                      filterStatus === status && styles.filterBadgeActive
-                    ]}>
-                      <Text style={[
-                        styles.filterBadgeText,
-                        filterStatus === status && styles.filterBadgeTextActive
-                      ]}>
-                        {statusCounts[status]}
-                      </Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              ))}
+                    <Text
+                      style={[
+                        styles.filterPillText,
+                        filterStatus === status && styles.filterPillTextActive,
+                      ]}
+                    >
+                      {status.charAt(0).toUpperCase() + status.slice(1)}
+                    </Text>
+                    {statusCounts[status] > 0 && (
+                      <View
+                        style={[
+                          styles.filterBadge,
+                          filterStatus === status && styles.filterBadgeActive,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.filterBadgeText,
+                            filterStatus === status &&
+                              styles.filterBadgeTextActive,
+                          ]}
+                        >
+                          {statusCounts[status]}
+                        </Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ),
+              )}
             </ScrollView>
           </View>
         )}
@@ -414,7 +499,11 @@ export default function AllAppointmentsScreen() {
             <ScrollView
               contentContainerStyle={styles.emptyScrollContent}
               refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#048E04"]} />
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  colors={["#048E04"]}
+                />
               }
             >
               <View style={styles.emptyState}>
@@ -424,7 +513,9 @@ export default function AllAppointmentsScreen() {
                   </Text>
                 </View>
                 <Text style={styles.emptyTitle}>
-                  {bookings.length === 0 ? "No Appointments Yet" : `No ${filterStatus} appointments`}
+                  {bookings.length === 0
+                    ? "No Appointments Yet"
+                    : `No ${filterStatus} appointments`}
                 </Text>
                 <Text style={styles.emptySubtitle}>
                   {bookings.length === 0
@@ -437,8 +528,15 @@ export default function AllAppointmentsScreen() {
                     onPress={() => navigation.navigate("BookAppointment")}
                     activeOpacity={0.8}
                   >
-                    <Ionicons name="add-circle-outline" size={wp(5)} color="#fff" style={styles.buttonIcon} />
-                    <Text style={styles.primaryButtonText}>Book Appointment</Text>
+                    <Ionicons
+                      name="add-circle-outline"
+                      size={wp(5)}
+                      color="#fff"
+                      style={styles.buttonIcon}
+                    />
+                    <Text style={styles.primaryButtonText}>
+                      Book Appointment
+                    </Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -450,7 +548,11 @@ export default function AllAppointmentsScreen() {
               contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}
               refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#048E04"]} />
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  colors={["#048E04"]}
+                />
               }
               renderItem={({ item }) => {
                 const statusConfig = getStatusConfig(item.status);
@@ -461,14 +563,31 @@ export default function AllAppointmentsScreen() {
                     {/* Service Header */}
                     <View style={styles.cardTop}>
                       <View style={styles.serviceTitleContainer}>
-                        <Ionicons name="medical" size={wp(5)} color="#048E04" style={styles.serviceIcon} />
+                        <Ionicons
+                          name="medical"
+                          size={wp(5)}
+                          color="#048E04"
+                          style={styles.serviceIcon}
+                        />
                         <Text style={styles.serviceTitle} numberOfLines={2}>
                           {item.serviceName}
                         </Text>
                       </View>
-                      <View style={[styles.statusChip, { backgroundColor: statusConfig.bgColor }]}>
-                        <Text style={styles.statusIcon}>{statusConfig.icon}</Text>
-                        <Text style={[styles.statusChipText, { color: statusConfig.color }]}>
+                      <View
+                        style={[
+                          styles.statusChip,
+                          { backgroundColor: statusConfig.bgColor },
+                        ]}
+                      >
+                        <Text style={styles.statusIcon}>
+                          {statusConfig.icon}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.statusChipText,
+                            { color: statusConfig.color },
+                          ]}
+                        >
                           {statusConfig.label}
                         </Text>
                       </View>
@@ -477,7 +596,11 @@ export default function AllAppointmentsScreen() {
                     {/* Date & Time Row */}
                     <View style={styles.infoRow}>
                       <View style={styles.infoBox}>
-                        <Ionicons name="calendar-outline" size={wp(4.5)} color="#048E04" />
+                        <Ionicons
+                          name="calendar-outline"
+                          size={wp(4.5)}
+                          color="#048E04"
+                        />
                         <View style={styles.infoTextContainer}>
                           <Text style={styles.infoLabel}>Date</Text>
                           <Text style={styles.infoText}>
@@ -491,7 +614,11 @@ export default function AllAppointmentsScreen() {
                         </View>
                       </View>
                       <View style={styles.infoBox}>
-                        <Ionicons name="time-outline" size={wp(4.5)} color="#048E04" />
+                        <Ionicons
+                          name="time-outline"
+                          size={wp(4.5)}
+                          color="#048E04"
+                        />
                         <View style={styles.infoTextContainer}>
                           <Text style={styles.infoLabel}>Time</Text>
                           <Text style={styles.infoText}>{item.time}</Text>
@@ -502,11 +629,19 @@ export default function AllAppointmentsScreen() {
                     {/* Patient & Phone */}
                     <View style={styles.detailsBox}>
                       <View style={styles.detailRow}>
-                        <Ionicons name="person-outline" size={wp(4.5)} color="#666" />
+                        <Ionicons
+                          name="person-outline"
+                          size={wp(4.5)}
+                          color="#666"
+                        />
                         <Text style={styles.detailText}>{item.username}</Text>
                       </View>
                       <View style={styles.detailRow}>
-                        <Ionicons name="call-outline" size={wp(4.5)} color="#666" />
+                        <Ionicons
+                          name="call-outline"
+                          size={wp(4.5)}
+                          color="#666"
+                        />
                         <Text style={styles.detailText}>{item.phone}</Text>
                       </View>
                     </View>
@@ -515,7 +650,11 @@ export default function AllAppointmentsScreen() {
                     {item.description && (
                       <View style={styles.notesBox}>
                         <View style={styles.notesHeader}>
-                          <Ionicons name="document-text-outline" size={wp(4)} color="#F59E0B" />
+                          <Ionicons
+                            name="document-text-outline"
+                            size={wp(4)}
+                            color="#F59E0B"
+                          />
                           <Text style={styles.notesTitle}>Notes</Text>
                         </View>
                         <Text style={styles.notesText} numberOfLines={3}>
@@ -525,37 +664,55 @@ export default function AllAppointmentsScreen() {
                     )}
 
                     {/* Cancellation Reason */}
-                    {item.status?.toLowerCase() === "cancelled" && item.cancellationReason && (
-                      <View style={styles.cancellationBox}>
-                        <View style={styles.cancellationHeader}>
-                          <Ionicons name="alert-circle-outline" size={wp(4)} color="#EF4444" />
-                          <Text style={styles.cancellationTitle}>Cancellation Reason</Text>
+                    {item.status?.toLowerCase() === "cancelled" &&
+                      item.cancellationReason && (
+                        <View style={styles.cancellationBox}>
+                          <View style={styles.cancellationHeader}>
+                            <Ionicons
+                              name="alert-circle-outline"
+                              size={wp(4)}
+                              color="#EF4444"
+                            />
+                            <Text style={styles.cancellationTitle}>
+                              Cancellation Reason
+                            </Text>
+                          </View>
+                          <Text style={styles.cancellationText}>
+                            {item.cancellationReason}
+                          </Text>
                         </View>
-                        <Text style={styles.cancellationText}>{item.cancellationReason}</Text>
-                      </View>
-                    )}
+                      )}
 
                     {/* Action Buttons */}
-                    {item.status?.toLowerCase() !== "cancelled" && item.status?.toLowerCase() !== "completed" && (
-                      <View style={styles.actionsRow}>
-                        <TouchableOpacity
-                          style={styles.editBtn}
-                          onPress={() => handleEdit(item)}
-                          activeOpacity={0.8}
-                        >
-                          <Ionicons name="create-outline" size={wp(4.5)} color="#fff" />
-                          <Text style={styles.editBtnText}>Edit</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.cancelBtn}
-                          onPress={() => handleCancelPress(item)}
-                          activeOpacity={0.8}
-                        >
-                          <Ionicons name="close-circle-outline" size={wp(4.5)} color="#EF4444" />
-                          <Text style={styles.cancelBtnText}>Cancel</Text>
-                        </TouchableOpacity>
-                      </View>
-                    )}
+                    {item.status?.toLowerCase() !== "cancelled" &&
+                      item.status?.toLowerCase() !== "completed" && (
+                        <View style={styles.actionsRow}>
+                          <TouchableOpacity
+                            style={styles.editBtn}
+                            onPress={() => handleEdit(item)}
+                            activeOpacity={0.8}
+                          >
+                            <Ionicons
+                              name="create-outline"
+                              size={wp(4.5)}
+                              color="#fff"
+                            />
+                            <Text style={styles.editBtnText}>Edit</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.cancelBtn}
+                            onPress={() => handleCancelPress(item)}
+                            activeOpacity={0.8}
+                          >
+                            <Ionicons
+                              name="close-circle-outline"
+                              size={wp(4.5)}
+                              color="#EF4444"
+                            />
+                            <Text style={styles.cancelBtnText}>Cancel</Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
 
                     {item.status?.toLowerCase() === "cancelled" && (
                       <TouchableOpacity
@@ -563,7 +720,11 @@ export default function AllAppointmentsScreen() {
                         onPress={() => handleEdit(item)}
                         activeOpacity={0.8}
                       >
-                        <Ionicons name="refresh-outline" size={wp(4.5)} color="#fff" />
+                        <Ionicons
+                          name="refresh-outline"
+                          size={wp(4.5)}
+                          color="#fff"
+                        />
                         <Text style={styles.rescheduleBtnText}>Reschedule</Text>
                       </TouchableOpacity>
                     )}
@@ -580,7 +741,11 @@ export default function AllAppointmentsScreen() {
             <View style={styles.modalBox}>
               <View style={styles.modalHeader}>
                 <View style={styles.modalHeaderLeft}>
-                  <Ionicons name="create-outline" size={wp(6)} color="#048E04" />
+                  <Ionicons
+                    name="create-outline"
+                    size={wp(6)}
+                    color="#048E04"
+                  />
                   <Text style={styles.modalTitle}>Edit Appointment</Text>
                 </View>
                 <TouchableOpacity
@@ -592,12 +757,16 @@ export default function AllAppointmentsScreen() {
                 </TouchableOpacity>
               </View>
 
-              <ScrollView showsVerticalScrollIndicator={false} style={styles.modalScroll}>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                style={styles.modalScroll}
+              >
                 <View style={styles.modalBody}>
                   {/* Patient Name */}
                   <View style={styles.fieldGroup}>
                     <Text style={styles.fieldLabel}>
-                      <Ionicons name="person" size={wp(4)} color="#666" /> Patient Name
+                      <Ionicons name="person" size={wp(4)} color="#666" />{" "}
+                      Patient Name
                     </Text>
                     <TextInput
                       style={[styles.fieldInput, styles.disabledInput]}
@@ -621,16 +790,20 @@ export default function AllAppointmentsScreen() {
                   {/* Date */}
                   <View style={styles.fieldGroup}>
                     <Text style={styles.fieldLabel}>
-                      <Ionicons name="calendar" size={wp(4)} color="#666" /> Select Date *
+                      <Ionicons name="calendar" size={wp(4)} color="#666" />{" "}
+                      Select Date *
                     </Text>
                     <Calendar
                       onDayPress={(day) => {
                         // Ensure date is not in the past
                         const selected = new Date(day.dateString);
                         const today = new Date();
-                        today.setHours(0,0,0,0);
+                        today.setHours(0, 0, 0, 0);
                         if (selected < today) {
-                          Alert.alert("Invalid Date", "Cannot select past dates.");
+                          Alert.alert(
+                            "Invalid Date",
+                            "Cannot select past dates.",
+                          );
                           return;
                         }
                         setSelectedDate(day.dateString);
@@ -656,14 +829,19 @@ export default function AllAppointmentsScreen() {
                   {/* Time */}
                   <View style={styles.fieldGroup}>
                     <Text style={styles.fieldLabel}>
-                      <Ionicons name="time" size={wp(4)} color="#666" /> Select Time *
+                      <Ionicons name="time" size={wp(4)} color="#666" /> Select
+                      Time *
                     </Text>
                     <TouchableOpacity
                       style={styles.timeSelector}
                       onPress={() => setShowTimePicker(true)}
                       activeOpacity={0.7}
                     >
-                      <Ionicons name="time-outline" size={wp(5)} color="#048E04" />
+                      <Ionicons
+                        name="time-outline"
+                        size={wp(5)}
+                        color="#048E04"
+                      />
                       <Text style={styles.timeSelectorText}>
                         {selectedTime.toLocaleTimeString([], {
                           hour: "2-digit",
@@ -688,7 +866,7 @@ export default function AllAppointmentsScreen() {
                           const dayHours = DENTIST_HOURS[dayOfWeek];
                           Alert.alert(
                             "Outside Clinic Hours",
-                            `Selected time is outside of clinic hours for ${selectedDate}. Please choose a time between ${dayHours.start}:00 and ${dayHours.end}:00.`
+                            `Selected time is outside of clinic hours for ${selectedDate}. Please choose a time between ${dayHours.start}:00 and ${dayHours.end}:00.`,
                           );
                           return;
                         }
@@ -701,10 +879,13 @@ export default function AllAppointmentsScreen() {
                           selectedDateObj.getDate(),
                           time.getHours(),
                           time.getMinutes(),
-                          0
+                          0,
                         );
                         if (selectedDateTime < new Date()) {
-                          Alert.alert("Invalid Time", "Please select a future time.");
+                          Alert.alert(
+                            "Invalid Time",
+                            "Please select a future time.",
+                          );
                           return;
                         }
 
@@ -716,7 +897,8 @@ export default function AllAppointmentsScreen() {
                   {/* Contact Number */}
                   <View style={styles.fieldGroup}>
                     <Text style={styles.fieldLabel}>
-                      <Ionicons name="call" size={wp(4)} color="#666" /> Contact Number *
+                      <Ionicons name="call" size={wp(4)} color="#666" /> Contact
+                      Number *
                     </Text>
                     <TextInput
                       placeholder="Enter phone number"
@@ -731,7 +913,12 @@ export default function AllAppointmentsScreen() {
                   {/* Notes */}
                   <View style={styles.fieldGroup}>
                     <Text style={styles.fieldLabel}>
-                      <Ionicons name="document-text" size={wp(4)} color="#666" /> Notes (Optional)
+                      <Ionicons
+                        name="document-text"
+                        size={wp(4)}
+                        color="#666"
+                      />{" "}
+                      Notes (Optional)
                     </Text>
                     <TextInput
                       placeholder="Add notes or special requests..."
@@ -751,7 +938,11 @@ export default function AllAppointmentsScreen() {
                     onPress={handleSaveChanges}
                     activeOpacity={0.8}
                   >
-                    <Ionicons name="checkmark-circle" size={wp(5)} color="#fff" />
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={wp(5)}
+                      color="#fff"
+                    />
                     <Text style={styles.saveBtnText}>Save Changes</Text>
                   </TouchableOpacity>
                 </View>
@@ -774,30 +965,40 @@ export default function AllAppointmentsScreen() {
                 </Text>
               </View>
 
-              <ScrollView showsVerticalScrollIndicator={false} style={styles.cancelModalScroll}>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                style={styles.cancelModalScroll}
+              >
                 <View style={styles.cancelModalBody}>
                   {cancelReasons.map((reason) => (
                     <TouchableOpacity
                       key={reason}
                       style={[
                         styles.reasonOption,
-                        selectedCancelReason === reason && styles.reasonOptionSelected,
+                        selectedCancelReason === reason &&
+                          styles.reasonOptionSelected,
                       ]}
                       onPress={() => setSelectedCancelReason(reason)}
                       activeOpacity={0.7}
                     >
-                      <View style={[
-                        styles.reasonRadio,
-                        selectedCancelReason === reason && styles.reasonRadioSelected,
-                      ]}>
+                      <View
+                        style={[
+                          styles.reasonRadio,
+                          selectedCancelReason === reason &&
+                            styles.reasonRadioSelected,
+                        ]}
+                      >
                         {selectedCancelReason === reason && (
                           <View style={styles.reasonRadioInner} />
                         )}
                       </View>
-                      <Text style={[
-                        styles.reasonText,
-                        selectedCancelReason === reason && styles.reasonTextSelected,
-                      ]}>
+                      <Text
+                        style={[
+                          styles.reasonText,
+                          selectedCancelReason === reason &&
+                            styles.reasonTextSelected,
+                        ]}
+                      >
                         {reason}
                       </Text>
                     </TouchableOpacity>
@@ -824,14 +1025,18 @@ export default function AllAppointmentsScreen() {
                       onPress={() => setCancelModalVisible(false)}
                       activeOpacity={0.8}
                     >
-                      <Text style={styles.cancelModalBtnSecondaryText}>Go Back</Text>
+                      <Text style={styles.cancelModalBtnSecondaryText}>
+                        Go Back
+                      </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.cancelModalBtnPrimary}
                       onPress={handleConfirmCancel}
                       activeOpacity={0.8}
                     >
-                      <Text style={styles.cancelModalBtnPrimaryText}>Confirm Cancel</Text>
+                      <Text style={styles.cancelModalBtnPrimaryText}>
+                        Confirm Cancel
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 </View>

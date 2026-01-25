@@ -1,8 +1,8 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect } from '@react-navigation/native';
-import axios from 'axios';
-import * as Notifications from 'expo-notifications';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect } from "@react-navigation/native";
+import axios from "axios";
+import * as Notifications from "expo-notifications";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -16,13 +16,13 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
-} from 'react-native';
+  View,
+} from "react-native";
 
 // -------------------------
 // Responsive helpers
 // -------------------------
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 const wp = (percentage) => (screenWidth * percentage) / 100;
 const hp = (percentage) => (screenHeight * percentage) / 100;
 const isSmallDevice = screenWidth < 375;
@@ -35,8 +35,8 @@ const fontSize = {
   base: isSmallDevice ? 14 : isMediumDevice ? 15 : 16,
   lg: isSmallDevice ? 16 : isMediumDevice ? 17 : 18,
   xl: isSmallDevice ? 18 : isMediumDevice ? 20 : 22,
-  '2xl': isSmallDevice ? 22 : isMediumDevice ? 24 : 26,
-  '3xl': isSmallDevice ? 26 : isMediumDevice ? 28 : 30,
+  "2xl": isSmallDevice ? 22 : isMediumDevice ? 24 : 26,
+  "3xl": isSmallDevice ? 26 : isMediumDevice ? 28 : 30,
 };
 
 // -------------------------
@@ -53,14 +53,19 @@ Notifications.setNotificationHandler({
 // -------------------------
 // Backend BASE_URL
 // -------------------------
-const BASE_URL = 'https://hdcpmss-mobilefinal-j60e.onrender.com';
+const BASE_URL = "https://hdcpmss-mobilefinal-j60e.onrender.com";
 
 const HomeScreen = ({ navigation }) => {
   const [appointments, setAppointments] = useState([]);
   const [upcomingAppointments, setUpcomingAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({ total: 0, pending: 0, accepted: 0, completed: 0 });
-  const [username, setUsername] = useState('');
+  const [stats, setStats] = useState({
+    total: 0,
+    pending: 0,
+    accepted: 0,
+    completed: 0,
+  });
+  const [username, setUsername] = useState("");
   const [userInfo, setUserInfo] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -72,7 +77,7 @@ const HomeScreen = ({ navigation }) => {
 
   useEffect(() => {
     checkTokenAndFetch();
-    
+
     return () => {
       if (chatPollingInterval.current) {
         clearInterval(chatPollingInterval.current);
@@ -94,55 +99,61 @@ const HomeScreen = ({ navigation }) => {
     useCallback(() => {
       const refreshData = async () => {
         try {
-          const token = await AsyncStorage.getItem('token');
+          const token = await AsyncStorage.getItem("token");
           if (token && userInfo) {
             await fetchAppointments(token);
             await fetchUnreadChatCount(token, userInfo.userId);
           }
         } catch (err) {
-          console.error('❌ Error refreshing data:', err);
+          console.error("❌ Error refreshing data:", err);
         }
       };
       refreshData();
-    }, [userInfo])
+    }, [userInfo]),
   );
 
   const checkTokenAndFetch = async () => {
     try {
-      const token = await AsyncStorage.getItem('token');
-      console.log('✅ Retrieved token:', token);
+      const token = await AsyncStorage.getItem("token");
+      console.log("✅ Retrieved token:", token);
 
       if (!token) {
-        Alert.alert('Session Expired', 'Please log in again.');
-        navigation.replace('LoginScreen');
+        Alert.alert("Session Expired", "Please log in again.");
+        navigation.replace("LoginScreen");
         return;
       }
 
       await requestNotificationPermissions();
       await fetchAppointments(token);
     } catch (err) {
-      console.error('❌ Error in checkTokenAndFetch:', err);
-      Alert.alert('Error', 'Something went wrong.');
-      navigation.replace('LoginScreen');
+      console.error("❌ Error in checkTokenAndFetch:", err);
+      Alert.alert("Error", "Something went wrong.");
+      navigation.replace("LoginScreen");
     }
   };
 
   const requestNotificationPermissions = async () => {
     const { status } = await Notifications.requestPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission required', 'Enable notifications to receive appointment reminders');
+    if (status !== "granted") {
+      Alert.alert(
+        "Permission required",
+        "Enable notifications to receive appointment reminders",
+      );
     }
   };
 
   const fetchUnreadChatCount = async (token, userId) => {
     try {
-      const response = await axios.get(`${BASE_URL}/api/messages/${userId}/unread-count`, {
-        headers: { Authorization: `Bearer ${token}` },
-        timeout: 5000,
-      });
+      const response = await axios.get(
+        `${BASE_URL}/api/messages/${userId}/unread-count`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 5000,
+        },
+      );
       setUnreadChatCount(response.data.unreadCount || 0);
     } catch (err) {
-      console.error('❌ Error fetching unread chat count:', err);
+      console.error("❌ Error fetching unread chat count:", err);
     }
   };
 
@@ -167,11 +178,11 @@ const HomeScreen = ({ navigation }) => {
       const timeDiff = aptDateTime - now;
       const hoursDiff = timeDiff / (1000 * 60 * 60);
 
-      if (apt.status.toLowerCase() === 'accepted') {
+      if (apt.status.toLowerCase() === "accepted") {
         notifs.push({
           id: `${apt._id}-accepted`,
-          type: 'accepted',
-          title: '✅ Appointment Accepted',
+          type: "accepted",
+          title: "✅ Appointment Accepted",
           message: `Your appointment for ${apt.serviceName} on ${new Date(apt.date).toLocaleDateString()} at ${apt.time} has been accepted.`,
           time: new Date(apt.updatedAt || apt.createdAt),
           appointmentId: apt._id,
@@ -179,11 +190,11 @@ const HomeScreen = ({ navigation }) => {
         });
       }
 
-      if (apt.status.toLowerCase() === 'cancelled') {
+      if (apt.status.toLowerCase() === "cancelled") {
         notifs.push({
           id: `${apt._id}-cancelled`,
-          type: 'cancelled',
-          title: '❌ Appointment Cancelled',
+          type: "cancelled",
+          title: "❌ Appointment Cancelled",
           message: `Your appointment for ${apt.serviceName} on ${new Date(apt.date).toLocaleDateString()} has been cancelled.`,
           time: new Date(apt.updatedAt || apt.createdAt),
           appointmentId: apt._id,
@@ -191,24 +202,24 @@ const HomeScreen = ({ navigation }) => {
         });
       }
 
-      if (apt.status.toLowerCase() === 'completed') {
+      if (apt.status.toLowerCase() === "completed") {
         notifs.push({
           id: `${apt._id}-completed`,
-          type: 'completed',
-          title: '✅ Appointment Completed',
+          type: "completed",
+          title: "✅ Appointment Completed",
           message: `Your appointment for ${apt.serviceName} has been completed. Tap to view receipt.`,
           time: new Date(apt.updatedAt || apt.createdAt),
           appointmentId: apt._id,
           read: false,
-          navigateTo: 'Receipt',
+          navigateTo: "Receipt",
         });
       }
 
       if (hoursDiff >= 0 && hoursDiff <= 24 && hoursDiff > 1) {
         notifs.push({
           id: `${apt._id}-today`,
-          type: 'today',
-          title: '📅 Appointment Today',
+          type: "today",
+          title: "📅 Appointment Today",
           message: `You have an appointment for ${apt.serviceName} today at ${apt.time}.`,
           time: new Date(),
           appointmentId: apt._id,
@@ -219,8 +230,8 @@ const HomeScreen = ({ navigation }) => {
       if (hoursDiff > 0 && hoursDiff <= 1) {
         notifs.push({
           id: `${apt._id}-soon`,
-          type: 'soon',
-          title: '⏰ Appointment in 1 Hour',
+          type: "soon",
+          title: "⏰ Appointment in 1 Hour",
           message: `Your appointment for ${apt.serviceName} is in less than 1 hour at ${apt.time}.`,
           time: new Date(),
           appointmentId: apt._id,
@@ -231,52 +242,92 @@ const HomeScreen = ({ navigation }) => {
 
     notifs.sort((a, b) => b.time - a.time);
     setNotifications(notifs);
-    setUnreadCount(notifs.filter(n => !n.read).length);
+    setUnreadCount(notifs.filter((n) => !n.read).length);
   };
 
   const fetchAppointments = async (token) => {
     try {
-      console.log('🔹 Fetching user profile first...');
-      
+      console.log("🔹 Fetching user profile first...");
+
       const resProfile = await axios.get(`${BASE_URL}/api/users/profile`, {
         headers: { Authorization: `Bearer ${token}` },
         timeout: 5000,
       });
-      
-      console.log('✅ Profile response:', resProfile.data);
+
+      console.log("✅ Profile response:", resProfile.data);
       const userId = resProfile.data._id || resProfile.data.id;
+      const userEmail = resProfile.data.email;
+
       const userData = {
         userId,
-        username: resProfile.data.username || 'User',
-        email: resProfile.data.email,
+        username: resProfile.data.username || "User",
+        email: userEmail,
       };
-      
+
       setUsername(userData.username);
       setUserInfo(userData);
 
       if (!userId) {
-        throw new Error('User ID not found in profile');
+        throw new Error("User ID not found in profile");
       }
+
+      console.log("🔹 User info:", { userId, email: userEmail });
 
       // Fetch unread chat count
       await fetchUnreadChatCount(token, userId);
-      
+
       // Start polling for chat updates
       startChatPolling(token, userId);
 
-      const resAppointments = await axios.get(`${BASE_URL}/api/booked-services`, {
-        headers: { Authorization: `Bearer ${token}` },
-        timeout: 5000,
+      console.log("🔹 Fetching appointments...");
+      const resAppointments = await axios.get(
+        `${BASE_URL}/api/booked-services`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 5000,
+        },
+      );
+
+      console.log(
+        "✅ All appointments fetched:",
+        resAppointments.data?.length || 0,
+      );
+      const allAppointments = resAppointments.data || [];
+
+      // Log sample appointment structure for debugging
+      if (allAppointments.length > 0) {
+        console.log("📋 Sample appointment structure:", {
+          id: allAppointments[0]._id,
+          userId: allAppointments[0].userId,
+          email: allAppointments[0].email,
+          serviceName: allAppointments[0].serviceName,
+          status: allAppointments[0].status,
+        });
+      }
+
+      // Filter appointments by email OR userId (for backward compatibility)
+      const userAppointments = allAppointments.filter((apt) => {
+        const matchEmail = apt.email === userEmail;
+        const matchUserId =
+          apt.userId === userId ||
+          apt.user === userId ||
+          apt.user?._id === userId ||
+          apt.createdBy === userId;
+
+        if (matchEmail || matchUserId) {
+          console.log(
+            "✅ Matched appointment:",
+            apt._id,
+            "- Service:",
+            apt.serviceName,
+          );
+        }
+
+        return matchEmail || matchUserId;
       });
 
-      const allAppointments = resAppointments.data || [];
-      
-      const userAppointments = allAppointments.filter((apt) => {
-        return apt.userId === userId || 
-               apt.user === userId || 
-               apt.user?._id === userId ||
-               apt.createdBy === userId;
-      });
+      console.log(`📊 Total appointments: ${allAppointments.length}`);
+      console.log(`📋 User appointments: ${userAppointments.length}`);
 
       setAppointments(userAppointments);
 
@@ -289,33 +340,58 @@ const HomeScreen = ({ navigation }) => {
       const todayApts = userAppointments.filter((apt) => {
         const aptDate = new Date(apt.date);
         aptDate.setHours(0, 0, 0, 0);
-        return aptDate.getTime() === today.getTime() && 
-               !['completed', 'cancelled'].includes(apt.status.toLowerCase());
+        const status = (apt.status || "pending").toLowerCase();
+        return (
+          aptDate.getTime() === today.getTime() &&
+          !["completed", "cancelled"].includes(status)
+        );
       });
+
+      console.log(`📅 Today's appointments: ${todayApts.length}`);
       setTodayAppointments(todayApts);
 
       const upcoming = userAppointments
         .filter((apt) => {
           const aptDateTime = new Date(`${apt.date}T${apt.time}`);
-          return aptDateTime >= today && !['completed', 'cancelled'].includes(apt.status.toLowerCase());
+          const status = (apt.status || "pending").toLowerCase();
+          return (
+            aptDateTime >= today && !["completed", "cancelled"].includes(status)
+          );
         })
-        .sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
+        .sort(
+          (a, b) =>
+            new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`),
+        );
 
+      console.log(`📆 Upcoming appointments: ${upcoming.length}`);
       setUpcomingAppointments(upcoming);
 
       const stats = {
         total: userAppointments.length,
-        pending: userAppointments.filter((a) => a.status.toLowerCase() === 'pending').length,
-        accepted: userAppointments.filter((a) => a.status.toLowerCase() === 'accepted').length,
-        completed: userAppointments.filter((a) => a.status.toLowerCase() === 'completed').length,
+        pending: userAppointments.filter(
+          (a) => (a.status || "pending").toLowerCase() === "pending",
+        ).length,
+        accepted: userAppointments.filter(
+          (a) => (a.status || "").toLowerCase() === "accepted",
+        ).length,
+        completed: userAppointments.filter(
+          (a) => (a.status || "").toLowerCase() === "completed",
+        ).length,
       };
+
+      console.log("📊 Stats:", stats);
       setStats(stats);
 
       generateNotifications(userAppointments);
       scheduleNotifications(upcoming);
     } catch (err) {
-      console.error('❌ Error fetching appointments:', err);
-      Alert.alert('Error', 'Failed to load appointments');
+      console.error("❌ Error fetching appointments:", err);
+      console.error("❌ Error response:", err.response?.data);
+      console.error("❌ Error status:", err.response?.status);
+      Alert.alert(
+        "Error",
+        err.response?.data?.error || "Failed to load appointments",
+      );
     } finally {
       setLoading(false);
     }
@@ -332,11 +408,13 @@ const HomeScreen = ({ navigation }) => {
 
       const now = new Date();
 
-      const oneDayBefore = new Date(aptDateTime.getTime() - 24 * 60 * 60 * 1000);
+      const oneDayBefore = new Date(
+        aptDateTime.getTime() - 24 * 60 * 60 * 1000,
+      );
       if (oneDayBefore > now) {
         await Notifications.scheduleNotificationAsync({
           content: {
-            title: '📅 Appointment Reminder',
+            title: "📅 Appointment Reminder",
             body: `Tomorrow: ${apt.serviceName} at ${apt.time}`,
             data: { appointmentId: apt._id },
           },
@@ -348,7 +426,7 @@ const HomeScreen = ({ navigation }) => {
       if (oneHourBefore > now) {
         await Notifications.scheduleNotificationAsync({
           content: {
-            title: '⏰ Appointment Soon!',
+            title: "⏰ Appointment Soon!",
             body: `${apt.serviceName} in 1 hour at ${apt.time}`,
             data: { appointmentId: apt._id },
           },
@@ -359,49 +437,80 @@ const HomeScreen = ({ navigation }) => {
   };
 
   const markAsRead = (notificationId) => {
-    setNotifications(prev => 
-      prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n)),
     );
-    setUnreadCount(prev => Math.max(0, prev - 1));
+    setUnreadCount((prev) => Math.max(0, prev - 1));
   };
 
   const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     setUnreadCount(0);
   };
 
   const getStatusConfig = (status) => {
     const statusLower = status.toLowerCase();
     switch (statusLower) {
-      case 'accepted': 
-        return { color: '#10B981', bgColor: '#D1FAE5', icon: '✓', label: 'Confirmed' };
-      case 'pending': 
-        return { color: '#F59E0B', bgColor: '#FEF3C7', icon: '⏳', label: 'Pending' };
-      case 'completed': 
-        return { color: '#3B82F6', bgColor: '#DBEAFE', icon: '✓', label: 'Completed' };
-      case 'cancelled': 
-        return { color: '#EF4444', bgColor: '#FEE2E2', icon: '✗', label: 'Cancelled' };
-      default: 
-        return { color: '#6B7280', bgColor: '#F3F4F6', icon: '•', label: status };
+      case "accepted":
+        return {
+          color: "#10B981",
+          bgColor: "#D1FAE5",
+          icon: "✓",
+          label: "Confirmed",
+        };
+      case "pending":
+        return {
+          color: "#F59E0B",
+          bgColor: "#FEF3C7",
+          icon: "⏳",
+          label: "Pending",
+        };
+      case "completed":
+        return {
+          color: "#3B82F6",
+          bgColor: "#DBEAFE",
+          icon: "✓",
+          label: "Completed",
+        };
+      case "cancelled":
+        return {
+          color: "#EF4444",
+          bgColor: "#FEE2E2",
+          icon: "✗",
+          label: "Cancelled",
+        };
+      default:
+        return {
+          color: "#6B7280",
+          bgColor: "#F3F4F6",
+          icon: "•",
+          label: status,
+        };
     }
   };
 
   const getNotificationColor = (type) => {
     switch (type) {
-      case 'accepted': return '#ECFDF5';
-      case 'cancelled': return '#FEF2F2';
-      case 'completed': return '#EFF6FF';
-      case 'today': return '#DBEAFE';
-      case 'soon': return '#FEF9C3';
-      default: return '#F9FAFB';
+      case "accepted":
+        return "#ECFDF5";
+      case "cancelled":
+        return "#FEF2F2";
+      case "completed":
+        return "#EFF6FF";
+      case "today":
+        return "#DBEAFE";
+      case "soon":
+        return "#FEF9C3";
+      default:
+        return "#F9FAFB";
     }
   };
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 18) return 'Good Afternoon';
-    return 'Good Evening';
+    if (hour < 12) return "Good Morning";
+    if (hour < 18) return "Good Afternoon";
+    return "Good Evening";
   };
 
   if (loading) {
@@ -418,7 +527,7 @@ const HomeScreen = ({ navigation }) => {
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
       <SafeAreaView style={styles.safeArea}>
         <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
-          <ScrollView 
+          <ScrollView
             style={styles.container}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
@@ -429,34 +538,38 @@ const HomeScreen = ({ navigation }) => {
                 <View style={styles.clinicInfo}>
                   <View style={styles.logoContainer}>
                     <Image
-                      source={require('../assets/halili logo.png')}
+                      source={require("../assets/halili logo.png")}
                       style={styles.logo}
                       resizeMode="contain"
                     />
                   </View>
                   <View style={styles.clinicTextContainer}>
-                    <Text style={styles.clinicName}>Halili's Dental Clinic</Text>
-                    <Text style={styles.clinicSubtitle}>Professional Dental Care</Text>
+                    <Text style={styles.clinicName}>
+                      Halili's Dental Clinic
+                    </Text>
+                    <Text style={styles.clinicSubtitle}>
+                      Professional Dental Care
+                    </Text>
                   </View>
                 </View>
-                
+
                 <View style={styles.headerActions}>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.chatButton}
-                    onPress={() => navigation.navigate('Chat')}
+                    onPress={() => navigation.navigate("Chat")}
                     activeOpacity={0.7}
                   >
                     <Text style={styles.chatIcon}>💬</Text>
                     {unreadChatCount > 0 && (
                       <View style={styles.chatBadge}>
                         <Text style={styles.chatBadgeText}>
-                          {unreadChatCount > 9 ? '9+' : unreadChatCount}
+                          {unreadChatCount > 9 ? "9+" : unreadChatCount}
                         </Text>
                       </View>
                     )}
                   </TouchableOpacity>
 
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.notificationButton}
                     onPress={() => setShowNotifications(true)}
                     activeOpacity={0.7}
@@ -465,19 +578,21 @@ const HomeScreen = ({ navigation }) => {
                     {unreadCount > 0 && (
                       <View style={styles.notificationBadge}>
                         <Text style={styles.notificationBadgeText}>
-                          {unreadCount > 9 ? '9+' : unreadCount}
+                          {unreadCount > 9 ? "9+" : unreadCount}
                         </Text>
                       </View>
                     )}
                   </TouchableOpacity>
-                  
-                  <TouchableOpacity 
-                    style={styles.profileButton} 
-                    onPress={() => navigation.navigate('Profile')}
+
+                  <TouchableOpacity
+                    style={styles.profileButton}
+                    onPress={() => navigation.navigate("Profile")}
                     activeOpacity={0.7}
                   >
                     <Image
-                      source={{ uri: 'https://cdn.builder.io/api/v1/image/assets/TEMP/710b09d5dcde3cacc180fc426a3bbdf2b55f80be?apiKey=b83e627850f647aa94da00dc54b22383' }}
+                      source={{
+                        uri: "https://cdn.builder.io/api/v1/image/assets/TEMP/710b09d5dcde3cacc180fc426a3bbdf2b55f80be?apiKey=b83e627850f647aa94da00dc54b22383",
+                      }}
                       style={styles.profileImage}
                     />
                   </TouchableOpacity>
@@ -489,9 +604,9 @@ const HomeScreen = ({ navigation }) => {
                 <Text style={styles.greeting}>{getGreeting()},</Text>
                 <Text style={styles.userName}>{username}</Text>
                 <Text style={styles.welcomeSubtext}>
-                  {upcomingAppointments.length > 0 
-                    ? `You have ${upcomingAppointments.length} upcoming appointment${upcomingAppointments.length > 1 ? 's' : ''}`
-                    : 'Your dental health is our priority'}
+                  {upcomingAppointments.length > 0
+                    ? `You have ${upcomingAppointments.length} upcoming appointment${upcomingAppointments.length > 1 ? "s" : ""}`
+                    : "Your dental health is our priority"}
                 </Text>
               </View>
             </View>
@@ -504,14 +619,17 @@ const HomeScreen = ({ navigation }) => {
                     <Text style={styles.todayBannerIconText}>📅</Text>
                   </View>
                   <View style={styles.todayBannerTextContainer}>
-                    <Text style={styles.todayBannerTitle}>Today's Appointments</Text>
+                    <Text style={styles.todayBannerTitle}>
+                      Today's Appointments
+                    </Text>
                     <Text style={styles.todayBannerSubtitle}>
-                      {todayAppointments.length} appointment{todayAppointments.length > 1 ? 's' : ''} scheduled
+                      {todayAppointments.length} appointment
+                      {todayAppointments.length > 1 ? "s" : ""} scheduled
                     </Text>
                   </View>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.todayBannerButton}
-                    onPress={() => navigation.navigate('AllAppointments')}
+                    onPress={() => navigation.navigate("AllAppointments")}
                   >
                     <Text style={styles.todayBannerButtonText}>View</Text>
                   </TouchableOpacity>
@@ -558,35 +676,39 @@ const HomeScreen = ({ navigation }) => {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Quick Actions</Text>
               <View style={styles.quickActions}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.actionCard, styles.actionCardBook]}
-                  onPress={() => navigation.navigate('BookAppointment')}
+                  onPress={() => navigation.navigate("BookAppointment")}
                   activeOpacity={0.8}
                 >
                   <View style={styles.actionIconWrapper}>
                     <Text style={styles.actionIcon}>📅</Text>
                   </View>
                   <Text style={styles.actionTitle}>Book Appointment</Text>
-                  <Text style={styles.actionDescription}>Schedule your visit</Text>
+                  <Text style={styles.actionDescription}>
+                    Schedule your visit
+                  </Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.actionCard, styles.actionCardView]}
-                  onPress={() => navigation.navigate('AllAppointments')}
+                  onPress={() => navigation.navigate("AllAppointments")}
                   activeOpacity={0.8}
                 >
                   <View style={styles.actionIconWrapper}>
                     <Text style={styles.actionIcon}>📋</Text>
                   </View>
                   <Text style={styles.actionTitle}>My Appointments</Text>
-                  <Text style={styles.actionDescription}>View all bookings</Text>
+                  <Text style={styles.actionDescription}>
+                    View all bookings
+                  </Text>
                 </TouchableOpacity>
               </View>
 
               {/* Chat Action Card */}
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.chatActionCard}
-                onPress={() => navigation.navigate('Chat')}
+                onPress={() => navigation.navigate("Chat")}
                 activeOpacity={0.8}
               >
                 <View style={styles.chatActionLeft}>
@@ -596,9 +718,9 @@ const HomeScreen = ({ navigation }) => {
                   <View style={styles.chatActionTextContainer}>
                     <Text style={styles.chatActionTitle}>Chat with Us</Text>
                     <Text style={styles.chatActionDescription}>
-                      {unreadChatCount > 0 
-                        ? `${unreadChatCount} new message${unreadChatCount > 1 ? 's' : ''}`
-                        : 'Get instant support'}
+                      {unreadChatCount > 0
+                        ? `${unreadChatCount} new message${unreadChatCount > 1 ? "s" : ""}`
+                        : "Get instant support"}
                     </Text>
                   </View>
                 </View>
@@ -613,8 +735,8 @@ const HomeScreen = ({ navigation }) => {
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Upcoming Appointments</Text>
                 {upcomingAppointments.length > 2 && (
-                  <TouchableOpacity 
-                    onPress={() => navigation.navigate('AllAppointments')}
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate("AllAppointments")}
                     activeOpacity={0.7}
                   >
                     <Text style={styles.viewAllText}>View All →</Text>
@@ -627,13 +749,16 @@ const HomeScreen = ({ navigation }) => {
                   <View style={styles.emptyStateIcon}>
                     <Text style={styles.emptyStateIconText}>📅</Text>
                   </View>
-                  <Text style={styles.emptyStateTitle}>No Upcoming Appointments</Text>
-                  <Text style={styles.emptyStateDescription}>
-                    Book your next dental checkup to maintain optimal oral health
+                  <Text style={styles.emptyStateTitle}>
+                    No Upcoming Appointments
                   </Text>
-                  <TouchableOpacity 
+                  <Text style={styles.emptyStateDescription}>
+                    Book your next dental checkup to maintain optimal oral
+                    health
+                  </Text>
+                  <TouchableOpacity
                     style={styles.emptyStateButton}
-                    onPress={() => navigation.navigate('BookAppointment')}
+                    onPress={() => navigation.navigate("BookAppointment")}
                     activeOpacity={0.8}
                   >
                     <Text style={styles.emptyStateButtonText}>Book Now</Text>
@@ -646,7 +771,11 @@ const HomeScreen = ({ navigation }) => {
                     <TouchableOpacity
                       key={appointment._id}
                       style={styles.appointmentCard}
-                      onPress={() => navigation.navigate('AppointmentDetails', { appointment })}
+                      onPress={() =>
+                        navigation.navigate("AppointmentDetails", {
+                          appointment,
+                        })
+                      }
                       activeOpacity={0.7}
                     >
                       <View style={styles.appointmentCardHeader}>
@@ -654,11 +783,25 @@ const HomeScreen = ({ navigation }) => {
                           <Text style={styles.appointmentIcon}>🦷</Text>
                         </View>
                         <View style={styles.appointmentCardHeaderInfo}>
-                          <Text style={styles.appointmentService}>{appointment.serviceName}</Text>
-                          <Text style={styles.appointmentPatient}>👤 {appointment.username}</Text>
+                          <Text style={styles.appointmentService}>
+                            {appointment.serviceName}
+                          </Text>
+                          <Text style={styles.appointmentPatient}>
+                            👤 {appointment.username}
+                          </Text>
                         </View>
-                        <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
-                          <Text style={[styles.statusBadgeText, { color: statusConfig.color }]}>
+                        <View
+                          style={[
+                            styles.statusBadge,
+                            { backgroundColor: statusConfig.bgColor },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.statusBadgeText,
+                              { color: statusConfig.color },
+                            ]}
+                          >
                             {statusConfig.label}
                           </Text>
                         </View>
@@ -667,16 +810,21 @@ const HomeScreen = ({ navigation }) => {
                         <View style={styles.appointmentDetail}>
                           <Text style={styles.appointmentDetailIcon}>📅</Text>
                           <Text style={styles.appointmentDetailText}>
-                            {new Date(appointment.date).toLocaleDateString('en-US', {
-                              weekday: 'short',
-                              month: 'short',
-                              day: 'numeric',
-                            })}
+                            {new Date(appointment.date).toLocaleDateString(
+                              "en-US",
+                              {
+                                weekday: "short",
+                                month: "short",
+                                day: "numeric",
+                              },
+                            )}
                           </Text>
                         </View>
                         <View style={styles.appointmentDetail}>
                           <Text style={styles.appointmentDetailIcon}>🕐</Text>
-                          <Text style={styles.appointmentDetailText}>{appointment.time}</Text>
+                          <Text style={styles.appointmentDetailText}>
+                            {appointment.time}
+                          </Text>
                         </View>
                       </View>
                     </TouchableOpacity>
@@ -696,25 +844,33 @@ const HomeScreen = ({ navigation }) => {
                   <View style={styles.tipIconContainer}>
                     <Text style={styles.tipIcon}>🪥</Text>
                   </View>
-                  <Text style={styles.tipText}>Brush twice daily for at least 2 minutes</Text>
+                  <Text style={styles.tipText}>
+                    Brush twice daily for at least 2 minutes
+                  </Text>
                 </View>
                 <View style={styles.tipItem}>
                   <View style={styles.tipIconContainer}>
                     <Text style={styles.tipIcon}>🧵</Text>
                   </View>
-                  <Text style={styles.tipText}>Floss daily to remove plaque between teeth</Text>
+                  <Text style={styles.tipText}>
+                    Floss daily to remove plaque between teeth
+                  </Text>
                 </View>
                 <View style={styles.tipItem}>
                   <View style={styles.tipIconContainer}>
                     <Text style={styles.tipIcon}>🥤</Text>
                   </View>
-                  <Text style={styles.tipText}>Limit sugary drinks and acidic foods</Text>
+                  <Text style={styles.tipText}>
+                    Limit sugary drinks and acidic foods
+                  </Text>
                 </View>
                 <View style={styles.tipItem}>
                   <View style={styles.tipIconContainer}>
                     <Text style={styles.tipIcon}>👨‍⚕️</Text>
                   </View>
-                  <Text style={styles.tipText}>Visit your dentist every 6 months</Text>
+                  <Text style={styles.tipText}>
+                    Visit your dentist every 6 months
+                  </Text>
                 </View>
               </View>
             </View>
@@ -734,15 +890,17 @@ const HomeScreen = ({ navigation }) => {
                 <Text style={styles.modalTitle}>Notifications</Text>
                 <View style={styles.modalHeaderActions}>
                   {unreadCount > 0 && (
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       onPress={markAllAsRead}
                       style={styles.markAllButton}
                       activeOpacity={0.7}
                     >
-                      <Text style={styles.markAllButtonText}>Mark all read</Text>
+                      <Text style={styles.markAllButtonText}>
+                        Mark all read
+                      </Text>
                     </TouchableOpacity>
                   )}
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     onPress={() => setShowNotifications(false)}
                     style={styles.closeModalButton}
                     activeOpacity={0.7}
@@ -752,7 +910,7 @@ const HomeScreen = ({ navigation }) => {
                 </View>
               </View>
 
-              <ScrollView 
+              <ScrollView
                 style={styles.notificationsList}
                 showsVerticalScrollIndicator={false}
               >
@@ -761,7 +919,9 @@ const HomeScreen = ({ navigation }) => {
                     <View style={styles.emptyNotificationsIcon}>
                       <Text style={styles.emptyNotificationsIconText}>🔔</Text>
                     </View>
-                    <Text style={styles.emptyNotificationsTitle}>No Notifications</Text>
+                    <Text style={styles.emptyNotificationsTitle}>
+                      No Notifications
+                    </Text>
                     <Text style={styles.emptyNotificationsText}>
                       You're all caught up! Check back later for updates.
                     </Text>
@@ -772,27 +932,43 @@ const HomeScreen = ({ navigation }) => {
                       key={notif.id}
                       style={[
                         styles.notificationItem,
-                        { backgroundColor: notif.read ? '#fff' : getNotificationColor(notif.type) }
+                        {
+                          backgroundColor: notif.read
+                            ? "#fff"
+                            : getNotificationColor(notif.type),
+                        },
                       ]}
                       onPress={() => {
                         markAsRead(notif.id);
-                        const appointment = appointments.find(a => a._id === notif.appointmentId);
+                        const appointment = appointments.find(
+                          (a) => a._id === notif.appointmentId,
+                        );
                         setShowNotifications(false);
-                        
-                        if (notif.navigateTo === 'Receipt') {
-                          navigation.navigate('Receipt', { appointment });
+
+                        if (notif.navigateTo === "Receipt") {
+                          navigation.navigate("Receipt", { appointment });
                         } else if (appointment) {
-                          navigation.navigate('AppointmentDetails', { appointment });
+                          navigation.navigate("AppointmentDetails", {
+                            appointment,
+                          });
                         }
                       }}
                       activeOpacity={0.7}
                     >
                       {!notif.read && <View style={styles.unreadIndicator} />}
                       <View style={styles.notificationItemContent}>
-                        <Text style={styles.notificationItemTitle}>{notif.title}</Text>
-                        <Text style={styles.notificationItemMessage}>{notif.message}</Text>
+                        <Text style={styles.notificationItemTitle}>
+                          {notif.title}
+                        </Text>
+                        <Text style={styles.notificationItemMessage}>
+                          {notif.message}
+                        </Text>
                         <Text style={styles.notificationItemTime}>
-                          {notif.time.toLocaleDateString()} • {notif.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {notif.time.toLocaleDateString()} •{" "}
+                          {notif.time.toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
                         </Text>
                       </View>
                     </TouchableOpacity>
@@ -811,25 +987,25 @@ const styles = StyleSheet.create({
   // Loading
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#fff",
+    justifyContent: "center",
+    alignItems: "center",
   },
   loadingText: {
     marginTop: 16,
     fontSize: fontSize.base,
-    color: '#6B7280',
-    fontWeight: '500',
+    color: "#6B7280",
+    fontWeight: "500",
   },
 
   // Main Container
   safeArea: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: "#F8F9FA",
   },
   scrollContent: {
     paddingBottom: hp(3),
@@ -837,37 +1013,37 @@ const styles = StyleSheet.create({
 
   // Header
   header: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     paddingTop: hp(2),
     paddingBottom: hp(2.5),
     borderBottomLeftRadius: wp(6),
     borderBottomRightRadius: wp(6),
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 3,
   },
   headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: wp(5),
     marginBottom: hp(2),
   },
   clinicInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
   },
   logoContainer: {
     width: wp(12),
     height: wp(12),
     borderRadius: wp(6),
-    backgroundColor: '#F0FDF4',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#048E04',
+    backgroundColor: "#F0FDF4",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#048E04",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -883,94 +1059,94 @@ const styles = StyleSheet.create({
   },
   clinicName: {
     fontSize: fontSize.lg,
-    fontWeight: '700',
-    color: '#1F2937',
+    fontWeight: "700",
+    color: "#1F2937",
     letterSpacing: -0.3,
   },
   clinicSubtitle: {
     fontSize: fontSize.xs,
-    fontWeight: '500',
-    color: '#048E04',
+    fontWeight: "500",
+    color: "#048E04",
     marginTop: 2,
   },
   headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: wp(2),
   },
   chatButton: {
     width: wp(11),
     height: wp(11),
     borderRadius: wp(5.5),
-    backgroundColor: '#F0FDF4',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
+    backgroundColor: "#F0FDF4",
+    justifyContent: "center",
+    alignItems: "center",
+    position: "relative",
   },
   chatIcon: {
     fontSize: wp(5.5),
   },
   chatBadge: {
-    position: 'absolute',
+    position: "absolute",
     top: -2,
     right: -2,
-    backgroundColor: '#048E04',
+    backgroundColor: "#048E04",
     borderRadius: wp(2.5),
     minWidth: wp(5),
     height: wp(5),
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: wp(1),
     borderWidth: 2,
-    borderColor: '#fff',
+    borderColor: "#fff",
   },
   chatBadgeText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: fontSize.xs,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   notificationButton: {
     width: wp(11),
     height: wp(11),
     borderRadius: wp(5.5),
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
+    backgroundColor: "#F3F4F6",
+    justifyContent: "center",
+    alignItems: "center",
+    position: "relative",
   },
   notificationIcon: {
     fontSize: wp(5.5),
   },
   notificationBadge: {
-    position: 'absolute',
+    position: "absolute",
     top: -2,
     right: -2,
-    backgroundColor: '#EF4444',
+    backgroundColor: "#EF4444",
     borderRadius: wp(2.5),
     minWidth: wp(5),
     height: wp(5),
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: wp(1),
     borderWidth: 2,
-    borderColor: '#fff',
+    borderColor: "#fff",
   },
   notificationBadgeText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: fontSize.xs,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   profileButton: {
     width: wp(11),
     height: wp(11),
     borderRadius: wp(5.5),
-    overflow: 'hidden',
+    overflow: "hidden",
     borderWidth: 2,
-    borderColor: '#048E04',
+    borderColor: "#048E04",
   },
   profileImage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
 
   // Welcome Section
@@ -979,45 +1155,45 @@ const styles = StyleSheet.create({
   },
   greeting: {
     fontSize: fontSize.base,
-    color: '#6B7280',
-    fontWeight: '500',
+    color: "#6B7280",
+    fontWeight: "500",
     marginBottom: 4,
   },
   userName: {
-    fontSize: fontSize['3xl'],
-    fontWeight: '700',
-    color: '#1F2937',
+    fontSize: fontSize["3xl"],
+    fontWeight: "700",
+    color: "#1F2937",
     marginBottom: 6,
     letterSpacing: -0.5,
   },
   welcomeSubtext: {
     fontSize: fontSize.sm,
-    color: '#6B7280',
-    fontWeight: '400',
+    color: "#6B7280",
+    fontWeight: "400",
   },
 
   // Today's Banner
   todayBanner: {
     marginHorizontal: wp(5),
     marginTop: hp(2),
-    backgroundColor: '#EFF6FF',
+    backgroundColor: "#EFF6FF",
     borderRadius: wp(4),
     borderLeftWidth: 4,
-    borderLeftColor: '#3B82F6',
-    overflow: 'hidden',
+    borderLeftColor: "#3B82F6",
+    overflow: "hidden",
   },
   todayBannerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: wp(4),
   },
   todayBannerIcon: {
     width: wp(12),
     height: wp(12),
     borderRadius: wp(6),
-    backgroundColor: '#DBEAFE',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#DBEAFE",
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: wp(3),
   },
   todayBannerIconText: {
@@ -1028,42 +1204,42 @@ const styles = StyleSheet.create({
   },
   todayBannerTitle: {
     fontSize: fontSize.base,
-    fontWeight: '700',
-    color: '#1F2937',
+    fontWeight: "700",
+    color: "#1F2937",
     marginBottom: 2,
   },
   todayBannerSubtitle: {
     fontSize: fontSize.sm,
-    color: '#6B7280',
+    color: "#6B7280",
   },
   todayBannerButton: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: "#3B82F6",
     paddingHorizontal: wp(4),
     paddingVertical: hp(1),
     borderRadius: wp(2),
   },
   todayBannerButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: fontSize.sm,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 
   // Stats Grid
   statsGrid: {
-    flexDirection: 'row',
+    flexDirection: "row",
     paddingHorizontal: wp(5),
     marginTop: hp(2.5),
     gap: wp(2.5),
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: wp(3.5),
     paddingVertical: hp(2),
     paddingHorizontal: wp(2),
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
@@ -1072,44 +1248,44 @@ const styles = StyleSheet.create({
     minHeight: hp(11),
   },
   statCardPrimary: {
-    borderColor: '#DBEAFE',
-    backgroundColor: '#EFF6FF',
+    borderColor: "#DBEAFE",
+    backgroundColor: "#EFF6FF",
   },
   statCardWarning: {
-    borderColor: '#FEF3C7',
-    backgroundColor: '#FFFBEB',
+    borderColor: "#FEF3C7",
+    backgroundColor: "#FFFBEB",
   },
   statCardSuccess: {
-    borderColor: '#D1FAE5',
-    backgroundColor: '#ECFDF5',
+    borderColor: "#D1FAE5",
+    backgroundColor: "#ECFDF5",
   },
   statCardInfo: {
-    borderColor: '#E9D5FF',
-    backgroundColor: '#F5F3FF',
+    borderColor: "#E9D5FF",
+    backgroundColor: "#F5F3FF",
   },
   statIconContainer: {
     width: wp(10),
     height: wp(10),
     borderRadius: wp(5),
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: hp(0.8),
   },
   statIcon: {
     fontSize: wp(5.5),
   },
   statValue: {
-    fontSize: isSmallDevice ? fontSize.xl : fontSize['2xl'],
-    fontWeight: '700',
-    color: '#1F2937',
+    fontSize: isSmallDevice ? fontSize.xl : fontSize["2xl"],
+    fontWeight: "700",
+    color: "#1F2937",
     marginBottom: 2,
   },
   statLabel: {
     fontSize: isSmallDevice ? 9 : fontSize.xs,
-    color: '#6B7280',
-    fontWeight: '600',
-    textAlign: 'center',
+    color: "#6B7280",
+    fontWeight: "600",
+    textAlign: "center",
     lineHeight: isSmallDevice ? 12 : 14,
   },
 
@@ -1119,20 +1295,20 @@ const styles = StyleSheet.create({
     marginTop: hp(3),
   },
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: hp(1.5),
   },
   sectionTitle: {
     fontSize: fontSize.xl,
-    fontWeight: '700',
-    color: '#1F2937',
+    fontWeight: "700",
+    color: "#1F2937",
   },
   viewAllText: {
     fontSize: fontSize.sm,
-    color: '#048E04',
-    fontWeight: '600',
+    color: "#048E04",
+    fontWeight: "600",
   },
   tipsEmoji: {
     fontSize: wp(5),
@@ -1140,17 +1316,17 @@ const styles = StyleSheet.create({
 
   // Quick Actions
   quickActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: wp(3),
     marginBottom: hp(2),
   },
   actionCard: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: wp(4),
     padding: wp(4),
-    alignItems: 'center',
-    shadowColor: '#000',
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -1158,22 +1334,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   actionCardBook: {
-    borderColor: '#D1FAE5',
-    backgroundColor: '#ECFDF5',
+    borderColor: "#D1FAE5",
+    backgroundColor: "#ECFDF5",
   },
   actionCardView: {
-    borderColor: '#DBEAFE',
-    backgroundColor: '#EFF6FF',
+    borderColor: "#DBEAFE",
+    backgroundColor: "#EFF6FF",
   },
   actionIconWrapper: {
     width: wp(16),
     height: wp(16),
     borderRadius: wp(8),
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#fff",
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: hp(1.5),
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -1184,48 +1360,48 @@ const styles = StyleSheet.create({
   },
   actionTitle: {
     fontSize: fontSize.base,
-    fontWeight: '700',
-    color: '#1F2937',
-    textAlign: 'center',
+    fontWeight: "700",
+    color: "#1F2937",
+    textAlign: "center",
     marginBottom: 4,
   },
   actionDescription: {
     fontSize: fontSize.xs,
-    color: '#6B7280',
-    textAlign: 'center',
+    color: "#6B7280",
+    textAlign: "center",
   },
 
   // Chat Action Card
   chatActionCard: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: wp(4),
     padding: wp(4),
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    shadowColor: '#000',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,
     borderWidth: 1,
-    borderColor: '#D1FAE5',
-    backgroundColor: '#F0FDF4',
+    borderColor: "#D1FAE5",
+    backgroundColor: "#F0FDF4",
   },
   chatActionLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
   },
   chatActionIconCircle: {
     width: wp(14),
     height: wp(14),
     borderRadius: wp(7),
-    backgroundColor: '#ECFDF5',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#ECFDF5",
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: wp(3),
-    shadowColor: '#048E04',
+    shadowColor: "#048E04",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -1239,55 +1415,55 @@ const styles = StyleSheet.create({
   },
   chatActionTitle: {
     fontSize: fontSize.lg,
-    fontWeight: '700',
-    color: '#1F2937',
+    fontWeight: "700",
+    color: "#1F2937",
     marginBottom: 2,
   },
   chatActionDescription: {
     fontSize: fontSize.sm,
-    color: '#048E04',
-    fontWeight: '600',
+    color: "#048E04",
+    fontWeight: "600",
   },
   chatActionArrow: {
     width: wp(10),
     height: wp(10),
     borderRadius: wp(5),
-    backgroundColor: '#048E04',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#048E04",
+    justifyContent: "center",
+    alignItems: "center",
   },
   chatActionArrowText: {
     fontSize: wp(5),
-    color: '#fff',
-    fontWeight: '700',
+    color: "#fff",
+    fontWeight: "700",
   },
 
   // Appointment Card
   appointmentCard: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: wp(4),
     padding: wp(4),
     marginBottom: hp(1.5),
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 2,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderColor: "#F3F4F6",
   },
   appointmentCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
     marginBottom: hp(1.5),
   },
   appointmentIconCircle: {
     width: wp(12),
     height: wp(12),
     borderRadius: wp(6),
-    backgroundColor: '#F0FDF4',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#F0FDF4",
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: wp(3),
   },
   appointmentIcon: {
@@ -1298,13 +1474,13 @@ const styles = StyleSheet.create({
   },
   appointmentService: {
     fontSize: fontSize.base,
-    fontWeight: '700',
-    color: '#1F2937',
+    fontWeight: "700",
+    color: "#1F2937",
     marginBottom: 4,
   },
   appointmentPatient: {
     fontSize: fontSize.sm,
-    color: '#6B7280',
+    color: "#6B7280",
   },
   statusBadge: {
     paddingHorizontal: wp(3),
@@ -1313,18 +1489,18 @@ const styles = StyleSheet.create({
   },
   statusBadgeText: {
     fontSize: fontSize.xs,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   appointmentCardFooter: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: wp(4),
     paddingTop: hp(1.5),
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    borderTopColor: "#F3F4F6",
   },
   appointmentDetail: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   appointmentDetailIcon: {
     fontSize: wp(4),
@@ -1332,27 +1508,27 @@ const styles = StyleSheet.create({
   },
   appointmentDetailText: {
     fontSize: fontSize.sm,
-    color: '#6B7280',
-    fontWeight: '500',
+    color: "#6B7280",
+    fontWeight: "500",
   },
 
   // Empty State
   emptyState: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: wp(4),
     padding: wp(6),
-    alignItems: 'center',
+    alignItems: "center",
     borderWidth: 2,
-    borderColor: '#F3F4F6',
-    borderStyle: 'dashed',
+    borderColor: "#F3F4F6",
+    borderStyle: "dashed",
   },
   emptyStateIcon: {
     width: wp(20),
     height: wp(20),
     borderRadius: wp(10),
-    backgroundColor: '#F9FAFB',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#F9FAFB",
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: hp(2),
   },
   emptyStateIconText: {
@@ -1360,61 +1536,61 @@ const styles = StyleSheet.create({
   },
   emptyStateTitle: {
     fontSize: fontSize.lg,
-    fontWeight: '700',
-    color: '#1F2937',
+    fontWeight: "700",
+    color: "#1F2937",
     marginBottom: hp(1),
-    textAlign: 'center',
+    textAlign: "center",
   },
   emptyStateDescription: {
     fontSize: fontSize.sm,
-    color: '#6B7280',
-    textAlign: 'center',
+    color: "#6B7280",
+    textAlign: "center",
     marginBottom: hp(2.5),
     lineHeight: 20,
     paddingHorizontal: wp(4),
   },
   emptyStateButton: {
-    backgroundColor: '#048E04',
+    backgroundColor: "#048E04",
     paddingHorizontal: wp(8),
     paddingVertical: hp(1.5),
     borderRadius: wp(3),
-    shadowColor: '#048E04',
+    shadowColor: "#048E04",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
   },
   emptyStateButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: fontSize.base,
-    fontWeight: '700',
+    fontWeight: "700",
   },
 
   // Tips Card
   tipsCard: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: wp(4),
     padding: wp(4),
     borderLeftWidth: 4,
-    borderLeftColor: '#F59E0B',
-    shadowColor: '#000',
+    borderLeftColor: "#F59E0B",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
   },
   tipItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: hp(1.5),
   },
   tipIconContainer: {
     width: wp(10),
     height: wp(10),
     borderRadius: wp(5),
-    backgroundColor: '#FFFBEB',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#FFFBEB",
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: wp(3),
   },
   tipIcon: {
@@ -1423,80 +1599,80 @@ const styles = StyleSheet.create({
   tipText: {
     flex: 1,
     fontSize: fontSize.sm,
-    color: '#374151',
+    color: "#374151",
     lineHeight: 20,
   },
 
   // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderTopLeftRadius: wp(6),
     borderTopRightRadius: wp(6),
     maxHeight: hp(85),
     paddingBottom: hp(2),
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: wp(5),
     paddingVertical: hp(2.5),
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: "#F3F4F6",
   },
   modalTitle: {
     fontSize: fontSize.xl,
-    fontWeight: '700',
-    color: '#1F2937',
+    fontWeight: "700",
+    color: "#1F2937",
   },
   modalHeaderActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: wp(3),
   },
   markAllButton: {
     paddingHorizontal: wp(3),
     paddingVertical: hp(0.8),
-    backgroundColor: '#F0FDF4',
+    backgroundColor: "#F0FDF4",
     borderRadius: wp(2),
   },
   markAllButtonText: {
-    color: '#048E04',
+    color: "#048E04",
     fontSize: fontSize.xs,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   closeModalButton: {
     width: wp(8),
     height: wp(8),
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   closeModalButtonText: {
     fontSize: wp(6),
-    color: '#6B7280',
+    color: "#6B7280",
   },
   notificationsList: {
     paddingHorizontal: wp(5),
     paddingTop: hp(1),
   },
   notificationItem: {
-    flexDirection: 'row',
+    flexDirection: "row",
     padding: wp(4),
     borderRadius: wp(3),
     marginBottom: hp(1.5),
     borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderColor: "#F3F4F6",
   },
   unreadIndicator: {
     width: wp(2),
     height: wp(2),
     borderRadius: wp(1),
-    backgroundColor: '#048E04',
+    backgroundColor: "#048E04",
     marginRight: wp(3),
     marginTop: hp(0.8),
   },
@@ -1505,31 +1681,31 @@ const styles = StyleSheet.create({
   },
   notificationItemTitle: {
     fontSize: fontSize.base,
-    fontWeight: '700',
-    color: '#1F2937',
+    fontWeight: "700",
+    color: "#1F2937",
     marginBottom: 4,
   },
   notificationItemMessage: {
     fontSize: fontSize.sm,
-    color: '#6B7280',
+    color: "#6B7280",
     marginBottom: hp(0.8),
     lineHeight: 20,
   },
   notificationItemTime: {
     fontSize: fontSize.xs,
-    color: '#9CA3AF',
+    color: "#9CA3AF",
   },
   emptyNotifications: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: hp(8),
   },
   emptyNotificationsIcon: {
     width: wp(24),
     height: wp(24),
     borderRadius: wp(12),
-    backgroundColor: '#F9FAFB',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#F9FAFB",
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: hp(2),
   },
   emptyNotificationsIconText: {
@@ -1537,14 +1713,14 @@ const styles = StyleSheet.create({
   },
   emptyNotificationsTitle: {
     fontSize: fontSize.lg,
-    fontWeight: '700',
-    color: '#1F2937',
+    fontWeight: "700",
+    color: "#1F2937",
     marginBottom: hp(0.8),
   },
   emptyNotificationsText: {
     fontSize: fontSize.sm,
-    color: '#9CA3AF',
-    textAlign: 'center',
+    color: "#9CA3AF",
+    textAlign: "center",
     paddingHorizontal: wp(8),
   },
 });
